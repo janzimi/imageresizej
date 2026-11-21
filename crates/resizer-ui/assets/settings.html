@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ImageResizerJ</title>
+<style>
+:root {
+  color-scheme: light dark;
+  --bg: #f5f5f7;
+  --card: #ffffff;
+  --header-material: rgba(255, 255, 255, 0.82);
+  --text: #1d1d1f;
+  --text-2: #6e6e73;
+  --text-3: #86868b;
+  --hairline: rgba(0, 0, 0, 0.09);
+  --win-border: rgba(0, 0, 0, 0.12);
+  --row-hover: rgba(0, 0, 0, 0.025);
+  --accent: #007aff;
+  --green: #34c759;
+  --danger-soft: rgba(255, 59, 48, 0.14);
+  --danger: #ff3b30;
+  --fill: rgba(120, 120, 128, 0.16);
+  --control: rgba(120, 120, 128, 0.12);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 14px rgba(0, 0, 0, 0.04);
+  --win-shadow: 0 12px 32px rgba(0, 0, 0, 0.18), 0 2px 6px rgba(0, 0, 0, 0.08);
+  --toast-bg: rgba(29, 29, 31, 0.88);
+  --toast-text: #ffffff;
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",
+          Roboto, Helvetica, Arial, sans-serif;
+}
+
+:root[data-theme="light"] { color-scheme: light; }
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0f0f11;
+  --card: #1c1c1e;
+  --header-material: rgba(28, 28, 30, 0.86);
+  --text: #f5f5f7;
+  --text-2: #a1a1a6;
+  --text-3: #98989d;
+  --hairline: rgba(255, 255, 255, 0.11);
+  --win-border: rgba(255, 255, 255, 0.15);
+  --row-hover: rgba(255, 255, 255, 0.045);
+  --accent: #0a84ff;
+  --green: #30d158;
+  --danger-soft: rgba(255, 69, 58, 0.22);
+  --danger: #ff453a;
+  --fill: rgba(120, 120, 128, 0.24);
+  --control: rgba(120, 120, 128, 0.24);
+  --shadow: none;
+  --win-shadow: 0 14px 36px rgba(0, 0, 0, 0.55);
+  --toast-bg: rgba(44, 44, 46, 0.94);
+  --toast-text: #f5f5f7;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0f0f11;
+    --card: #1c1c1e;
+    --header-material: rgba(28, 28, 30, 0.86);
+    --text: #f5f5f7;
+    --text-2: #a1a1a6;
+    --text-3: #98989d;
+    --hairline: rgba(255, 255, 255, 0.11);
+    --win-border: rgba(255, 255, 255, 0.15);
+    --row-hover: rgba(255, 255, 255, 0.045);
+    --accent: #0a84ff;
+    --green: #30d158;
+    --danger-soft: rgba(255, 69, 58, 0.22);
+    --danger: #ff453a;
+    --fill: rgba(120, 120, 128, 0.24);
+    --control: rgba(120, 120, 128, 0.24);
+    --shadow: none;
+    --win-shadow: 0 14px 36px rgba(0, 0, 0, 0.55);
+    --toast-bg: rgba(44, 44, 46, 0.94);
+    --toast-text: #f5f5f7;
+  }
+}
+
+* { box-sizing: border-box; user-select: none; }
+html, body {
+  margin: 0; padding: 0;
+  width: 100%; height: 100%;
+  background: transparent;
+  overflow: hidden;
+  font-family: var(--font);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 8px; height: 8px; background: transparent; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-button { display: none; }
+::-webkit-scrollbar-thumb {
+  background-color: rgba(120, 120, 128, 0.35);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover { background-color: rgba(120, 120, 128, 0.55); }
+
+.app-wrap {
+  width: 100%; height: 100%;
+  padding: 14px;
+  display: flex;
+}
+
+.window-shell {
+  position: relative;
+  width: 100%; height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-radius: 18px;
+  background: var(--bg);
+  border: 1px solid var(--win-border);
+  box-shadow: var(--win-shadow);
+  overflow: hidden;
+  transition: background-color 0.25s ease, border-color 0.25s ease;
+}
+
+/* ── Шапка окна (перетаскиваемая) ─────────────────────── */
+.titlebar {
+  flex-shrink: 0;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 10px 0 14px;
+  background: var(--header-material);
+  border-bottom: 1px solid var(--hairline);
+  cursor: default;
+  transition: background-color 0.25s ease;
+}
+.title-left {
+  display: flex; align-items: center; gap: 9px;
+  min-width: 0;
+}
+.app-icon {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  display: block;
+}
+.title-text {
+  display: flex; align-items: baseline; gap: 7px; min-width: 0;
+}
+.title-name {
+  font-size: 13.5px; font-weight: 700; letter-spacing: -0.2px;
+  color: var(--text);
+}
+.title-sub {
+  font-size: 11.5px; color: var(--text-3);
+}
+
+.win-actions { display: flex; align-items: center; gap: 3px; flex-shrink: 0; }
+.btn-win {
+  width: 28px; height: 28px;
+  border: none; border-radius: 8px;
+  background: transparent; color: var(--text-2);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+.btn-win:hover { background: var(--fill); color: var(--text); }
+.btn-win.close:hover { background: var(--danger-soft); color: var(--danger); }
+.btn-win:active { transform: scale(0.88); }
+.btn-win svg {
+  width: 13px; height: 13px; fill: none;
+  stroke: currentColor; stroke-width: 2; stroke-linecap: round;
+}
+
+/* ── Контент ──────────────────────────────────────────── */
+.window-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 14px 16px 16px;
+}
+
+.group { margin-top: 14px; }
+.group:first-child { margin-top: 0; }
+.group-title {
+  margin: 0 0 6px 12px;
+  font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--text-3);
+}
+.card {
+  background: var(--card);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  transition: background-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.row {
+  position: relative;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  min-height: 46px; padding: 9px 14px;
+  transition: background-color 0.15s ease, opacity 0.2s ease;
+}
+.row:hover { background: var(--row-hover); }
+.row:not(:first-child)::before {
+  content: ""; position: absolute; top: 0; left: 14px; right: 0;
+  height: 1px; background: var(--hairline);
+}
+.row-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.row-title { font-size: 13.5px; font-weight: 500; }
+.row-caption { font-size: 11.5px; color: var(--text-3); }
+.row-stack { flex-direction: column; align-items: stretch; gap: 8px; }
+.row-head { display: flex; justify-content: space-between; align-items: baseline; width: 100%; }
+.row-value { font-size: 13px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.row-disabled { opacity: 0.42; pointer-events: none; }
+
+/* Сегментированный контроль */
+.segmented {
+  position: relative; display: flex; width: 100%;
+  padding: 2px; border-radius: 9px; background: var(--control);
+  transition: background-color 0.25s ease;
+}
+.segmented button {
+  position: relative; z-index: 1; flex: 1;
+  padding: 6px 0; border: none; border-radius: 7px;
+  background: transparent; font-family: inherit;
+  font-size: 12.5px; font-weight: 600; color: var(--text-2);
+  cursor: pointer; transition: color 0.2s;
+}
+.segmented button[aria-checked="true"] { color: var(--text); }
+.segmented-thumb {
+  position: absolute; top: 2px; left: 2px;
+  width: calc((100% - 4px) / 4); height: calc(100% - 4px);
+  border-radius: 7px; background: var(--card);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12), 0 0 0 0.5px rgba(0, 0, 0, 0.04);
+  transition: transform 0.26s cubic-bezier(0.34, 1.4, 0.64, 1), background-color 0.25s ease;
+}
+.segmented-3 .segmented-thumb { width: calc((100% - 4px) / 3); }
+
+/* Stepper */
+.stepper {
+  display: flex; align-items: center;
+  padding: 2px; border-radius: 9px; background: var(--control);
+  transition: background-color 0.25s ease;
+}
+.step-btn {
+  width: 28px; height: 28px; border: none; border-radius: 7px;
+  background: transparent; color: var(--accent);
+  font-size: 17px; line-height: 1; cursor: pointer;
+  transition: background-color 0.15s, transform 0.1s;
+}
+.step-btn:hover { background: var(--fill); }
+.step-btn:active { transform: scale(0.88); }
+.step-value { display: flex; align-items: baseline; justify-content: center; gap: 3px; padding: 0 5px; }
+#width-input {
+  width: 50px; border: none; background: transparent; text-align: center;
+  font-family: inherit; font-size: 14px; font-weight: 600; color: var(--text);
+  outline: none; user-select: text; font-variant-numeric: tabular-nums;
+}
+#width-input::-webkit-outer-spin-button,
+#width-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.step-unit { font-size: 11.5px; color: var(--text-2); }
+
+/* Слайдер качества */
+input[type="range"] {
+  -webkit-appearance: none; appearance: none; width: 100%; height: 4px;
+  border-radius: 2px; outline: none; cursor: pointer;
+  background: linear-gradient(to right,
+    var(--accent) var(--fill-pos, 80%),
+    var(--fill) var(--fill-pos, 80%));
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%;
+  background: #ffffff; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s ease;
+}
+input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.14); }
+
+/* Тумблер iOS */
+.switch { position: relative; display: inline-block; flex-shrink: 0; cursor: pointer; }
+.switch input { position: absolute; opacity: 0; pointer-events: none; }
+.switch .track {
+  display: block; position: relative; width: 46px; height: 28px;
+  border-radius: 14px; background: var(--fill);
+  transition: background-color 0.25s ease;
+}
+.switch .thumb {
+  position: absolute; top: 2px; left: 2px; width: 24px; height: 24px;
+  border-radius: 50%; background: #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.16), 0 1px 1px rgba(0, 0, 0, 0.14);
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.switch input:checked + .track { background: var(--green); }
+.switch input:checked + .track .thumb { transform: translateX(18px); }
+
+/* Подвал и плашка автосохранения */
+.footnote {
+  margin: 12px 4px 0; text-align: center; font-size: 11px; color: var(--text-3);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  user-select: text;
+}
+.autosave-toast {
+  position: absolute; left: 50%; bottom: 14px; transform: translate(-50%, 12px);
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 13px; border-radius: 999px;
+  background: var(--toast-bg); color: var(--toast-text);
+  font-size: 12.5px; font-weight: 500;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.autosave-toast.visible { opacity: 1; transform: translate(-50%, 0); }
+.autosave-toast svg {
+  width: 13px; height: 13px; fill: none; stroke: var(--green);
+  stroke-width: 2.3; stroke-linecap: round; stroke-linejoin: round;
+}
+</style>
+</head>
+<body>
+<div class="app-wrap">
+  <div class="window-shell">
+    <header class="titlebar" id="titlebar">
+      <div class="title-left">
+        <div class="app-icon">
+          <svg class="app-icon" viewBox="0 0 100 100" aria-hidden="true">
+            <rect x="19" y="29" width="75" height="59" rx="9" fill="#e65100" />
+            <rect x="6" y="16" width="75" height="59" rx="9" fill="#f57c00" />
+            <circle cx="62.5" cy="33.5" r="6.5" fill="#fff6c2" />
+            <polygon points="16.5,65 35.5,37 54.5,65" fill="#842400" />
+            <polygon points="45.5,65 58,49 70.5,65" fill="#bf3b00" />
+          </svg>
+        </div>
+        <div class="title-text">
+          <span class="title-name">ImageResizerJ</span>
+          <span class="title-sub">Настройки</span>
+        </div>
+      </div>
+      <div class="win-actions">
+        <button type="button" class="btn-win" id="btn-min" title="Свернуть">
+          <svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12" /></svg>
+        </button>
+        <button type="button" class="btn-win close" id="btn-close" title="Закрыть">
+          <svg viewBox="0 0 24 24"><line x1="6" y1="6" x2="18" y2="18" /><line x1="18" y1="6" x2="6" y2="18" /></svg>
+        </button>
+      </div>
+    </header>
+
+    <main class="window-body" id="window-body">
+      <section class="group">
+        <h2 class="group-title">Формат и качество</h2>
+        <div class="card">
+          <div class="row row-stack">
+            <div class="row-head">
+              <span class="row-title">Формат сохранения</span>
+              <span class="row-caption" id="format-hint">Максимальная совместимость</span>
+            </div>
+            <div class="segmented" id="format-seg" role="radiogroup">
+              <div class="segmented-thumb" id="format-thumb"></div>
+              <button type="button" data-val="jpg">JPG</button>
+              <button type="button" data-val="png">PNG</button>
+              <button type="button" data-val="webp">WebP</button>
+              <button type="button" data-val="avif">AVIF</button>
+            </div>
+          </div>
+
+          <div class="row row-stack" id="quality-row">
+            <div class="row-head">
+              <span class="row-title">Качество сжатия</span>
+              <span class="row-value" id="quality-val">90%</span>
+            </div>
+            <input type="range" id="quality-range" min="50" max="100" step="1" value="90" />
+          </div>
+        </div>
+      </section>
+
+      <section class="group">
+        <h2 class="group-title">Размер и файлы</h2>
+        <div class="card">
+          <div class="row">
+            <div class="row-text">
+              <span class="row-title">Ширина изображения</span>
+              <span class="row-caption">Высота подбирается пропорционально</span>
+            </div>
+            <div class="stepper">
+              <button type="button" class="step-btn" id="w-minus">−</button>
+              <div class="step-value">
+                <input type="number" id="width-input" min="64" max="10000" value="1024" />
+                <span class="step-unit">px</span>
+              </div>
+              <button type="button" class="step-btn" id="w-plus">+</button>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="row-text">
+              <span class="row-title">Не увеличивать маленькие</span>
+              <span class="row-caption">Пропускать ресайз, если фото уже́ заданной ширины</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="no-upscale" />
+              <span class="track"><span class="thumb"></span></span>
+            </label>
+          </div>
+
+          <div class="row">
+            <div class="row-text">
+              <span class="row-title">Удалять оригиналы</span>
+              <span class="row-caption">Если выключено — сохраняется копия рядом</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="delete-originals" />
+              <span class="track"><span class="thumb"></span></span>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <section class="group">
+        <h2 class="group-title">Интерфейс</h2>
+        <div class="card">
+          <div class="row">
+            <div class="row-text">
+              <span class="row-title">Уведомления о завершении</span>
+              <span class="row-caption">Всплывающая карточка в правом нижнем углу</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="show-notifications" />
+              <span class="track"><span class="thumb"></span></span>
+            </label>
+          </div>
+
+          <div class="row row-stack">
+            <div class="row-head">
+              <span class="row-title">Тема оформления</span>
+            </div>
+            <div class="segmented segmented-3" id="theme-seg" role="radiogroup">
+              <div class="segmented-thumb" id="theme-thumb"></div>
+              <button type="button" data-val="system">Авто</button>
+              <button type="button" data-val="light">Светлая</button>
+              <button type="button" data-val="dark">Тёмная</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <p class="footnote" id="config-path"></p>
+    </main>
+
+    <div class="autosave-toast" id="toast">
+      <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
+      <span>Сохранено</span>
+    </div>
+  </div>
+</div>
+
+<script>
+const STATE = __INITIAL_STATE__;
+const config = STATE.config;
+
+const HINTS = {
+  jpg:  "Максимальная совместимость",
+  png:  "Без потерь, сохраняет прозрачность",
+  webp: "Быстро и компактно, с прозрачностью",
+  avif: "Минимальный размер, медленнее кодируется"
+};
+
+const titlebar = document.getElementById("titlebar");
+const winBody = document.getElementById("window-body");
+const formatButtons = [...document.querySelectorAll("#format-seg button")];
+const themeButtons = [...document.querySelectorAll("#theme-seg button")];
+const formatThumb = document.getElementById("format-thumb");
+const themeThumb = document.getElementById("theme-thumb");
+const formatHint = document.getElementById("format-hint");
+const qualityRow = document.getElementById("quality-row");
+const qualityRange = document.getElementById("quality-range");
+const qualityVal = document.getElementById("quality-val");
+const widthInput = document.getElementById("width-input");
+const noUpscale = document.getElementById("no-upscale");
+const deleteOrig = document.getElementById("delete-originals");
+const showNotif = document.getElementById("show-notifications");
+const toastEl = document.getElementById("toast");
+
+const cfgEl = document.getElementById("config-path");
+cfgEl.textContent = STATE.config_path;
+cfgEl.title = STATE.config_path;
+
+// Управление безрамочным окном
+titlebar.addEventListener("mousedown", (e) => {
+  if (e.button === 0 && !e.target.closest("button")) {
+    window.ipc.postMessage(JSON.stringify({ type: "drag" }));
+  }
+});
+document.getElementById("btn-min").addEventListener("click", () => {
+  window.ipc.postMessage(JSON.stringify({ type: "minimize" }));
+});
+document.getElementById("btn-close").addEventListener("click", () => {
+  window.ipc.postMessage(JSON.stringify({ type: "close" }));
+});
+window.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    window.ipc.postMessage(JSON.stringify({ type: "close" }));
+  }
+});
+
+let toastTimer = null;
+function showSaved() {
+  toastEl.classList.add("visible");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("visible"), 1300);
+}
+
+function saveConfig() {
+  window.ipc.postMessage(JSON.stringify({ type: "save", config }));
+  showSaved();
+}
+
+function updateQualitySlider() {
+  const min = Number(qualityRange.min);
+  const max = Number(qualityRange.max);
+  const pct = ((config.quality - min) / (max - min)) * 100;
+  qualityRange.value = config.quality;
+  qualityRange.style.setProperty("--fill-pos", pct + "%");
+  qualityVal.textContent = config.quality + "%";
+}
+
+function applyUI() {
+  const fIdx = Math.max(0, formatButtons.findIndex(b => b.dataset.val === config.format));
+  formatButtons.forEach((b, i) => b.setAttribute("aria-checked", i === fIdx ? "true" : "false"));
+  formatThumb.style.transform = `translateX(${fIdx * 100}%)`;
+  formatHint.textContent = HINTS[config.format] || "";
+  qualityRow.classList.toggle("row-disabled", config.format === "png");
+
+  const tIdx = Math.max(0, themeButtons.findIndex(b => b.dataset.val === config.theme));
+  themeButtons.forEach((b, i) => b.setAttribute("aria-checked", i === tIdx ? "true" : "false"));
+  themeThumb.style.transform = `translateX(${tIdx * 100}%)`;
+  if (config.theme === "system") {
+    document.documentElement.removeAttribute("data-theme");
+  } else {
+    document.documentElement.dataset.theme = config.theme;
+  }
+
+  widthInput.value = config.target_width;
+  noUpscale.checked = config.no_upscale;
+  deleteOrig.checked = config.delete_originals;
+  showNotif.checked = config.show_notifications;
+  updateQualitySlider();
+}
+
+formatButtons.forEach(btn => btn.addEventListener("click", () => {
+  config.format = btn.dataset.val;
+  applyUI();
+  saveConfig();
+}));
+
+themeButtons.forEach(btn => btn.addEventListener("click", () => {
+  config.theme = btn.dataset.val;
+  applyUI();
+  saveConfig();
+}));
+
+qualityRange.addEventListener("input", () => {
+  config.quality = Number(qualityRange.value);
+  updateQualitySlider();
+});
+qualityRange.addEventListener("change", saveConfig);
+
+function setWidth(val) {
+  config.target_width = Math.max(64, Math.min(10000, Math.round(val) || 1024));
+  widthInput.value = config.target_width;
+  saveConfig();
+}
+document.getElementById("w-minus").addEventListener("click", () => setWidth(config.target_width - 128));
+document.getElementById("w-plus").addEventListener("click", () => setWidth(config.target_width + 128));
+widthInput.addEventListener("change", () => setWidth(Number(widthInput.value)));
+
+noUpscale.addEventListener("change", () => { config.no_upscale = noUpscale.checked; saveConfig(); });
+deleteOrig.addEventListener("change", () => { config.delete_originals = deleteOrig.checked; saveConfig(); });
+showNotif.addEventListener("change", () => { config.show_notifications = showNotif.checked; saveConfig(); });
+
+applyUI();
+
+// Вычисляем реальную высоту всего контента и даём команду Rust показать окно
+setTimeout(() => {
+  // 28px = внешние отступы .app-wrap под тень + 2px на рамку .window-shell
+  const totalHeight = Math.ceil(titlebar.offsetHeight + winBody.scrollHeight + 30);
+  window.ipc.postMessage(JSON.stringify({ type: "ready", height: totalHeight }));
+}, 0);
+</script>
+</body>
+</html>

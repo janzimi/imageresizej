@@ -1,0 +1,19 @@
+[package]
+name = "resizer-ui"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "imageresizej"
+path = "src/main.rs"
+
+[dependencies]
+image = { version = "0.25", default-features = false, features = ["ico"] }
+resizer-core = { path = "../resizer-core" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tao = "0.30"
+wry = "0.47"
+
+[target.'cfg(windows)'.build-dependencies]
+winresource = "0.1"

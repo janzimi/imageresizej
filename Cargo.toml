@@ -1,0 +1,12 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/resizer-core",
+    "crates/resizer-worker",
+    "crates/resizer-ui",
+    "crates/resizer-win-shell",
+]
+
+[workspace.package]
+version = "0.2.0"
+edition = "2024"

@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<style>
+:root {
+  color-scheme: light dark;
+  --card: rgba(255, 255, 255, 0.94);
+  --text: #1d1d1f;
+  --text-2: #6e6e73;
+  --hairline: rgba(0, 0, 0, 0.1);
+  --green: #34c759;
+  --green-soft: rgba(52, 199, 89, 0.14);
+  --warn: #d97706;
+  --warn-soft: rgba(245, 158, 11, 0.15);
+  --accent: #007aff;
+  --accent-soft: rgba(0, 122, 255, 0.12);
+  --fill: rgba(120, 120, 128, 0.14);
+  --shadow: 0 8px 28px rgba(0, 0, 0, 0.14), 0 1px 3px rgba(0, 0, 0, 0.08);
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",
+          Roboto, Helvetica, Arial, sans-serif;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --card: rgba(28, 28, 30, 0.94);
+  --text: #f5f5f7;
+  --text-2: #a1a1a6;
+  --hairline: rgba(255, 255, 255, 0.12);
+  --green: #30d158;
+  --green-soft: rgba(48, 209, 88, 0.18);
+  --warn: #ffb340;
+  --warn-soft: rgba(255, 159, 10, 0.18);
+  --accent: #0a84ff;
+  --accent-soft: rgba(10, 132, 255, 0.2);
+  --fill: rgba(120, 120, 128, 0.26);
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --card: rgba(28, 28, 30, 0.94);
+    --text: #f5f5f7;
+    --text-2: #a1a1a6;
+    --hairline: rgba(255, 255, 255, 0.12);
+    --green: #30d158;
+    --green-soft: rgba(48, 209, 88, 0.18);
+    --warn: #ffb340;
+    --warn-soft: rgba(255, 159, 10, 0.18);
+    --accent: #0a84ff;
+    --accent-soft: rgba(10, 132, 255, 0.2);
+    --fill: rgba(120, 120, 128, 0.26);
+    --shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  }
+}
+
+* { box-sizing: border-box; user-select: none; }
+html, body {
+  margin: 0; padding: 0; width: 100%; height: 100%;
+  background: transparent; overflow: hidden;
+  font-family: var(--font); -webkit-font-smoothing: antialiased;
+}
+
+.wrap {
+  width: 100%; height: 100%;
+  padding: 12px;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.toast-card {
+  width: 100%;
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: var(--card);
+  border: 1px solid var(--hairline);
+  box-shadow: var(--shadow);
+  color: var(--text);
+  opacity: 0;
+  transform: translateY(14px) scale(0.96);
+  transition: opacity 0.24s ease, transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.toast-card.show { opacity: 1; transform: translateY(0) scale(1); }
+.toast-card.hide { opacity: 0; transform: translateY(10px) scale(0.96); }
+
+.badge {
+  width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--green-soft); color: var(--green);
+}
+.badge.warn { background: var(--warn-soft); color: var(--warn); }
+.badge svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.3; stroke-linecap: round; stroke-linejoin: round; }
+
+.body { flex: 1; min-width: 0; }
+.title { font-size: 13.5px; font-weight: 600; letter-spacing: -0.1px; }
+.sub {
+  margin-top: 2px; font-size: 11.5px; color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.btn-log {
+  border: none; border-radius: 8px; padding: 5px 10px;
+  background: var(--accent-soft); color: var(--accent);
+  font-family: inherit; font-size: 11.5px; font-weight: 600;
+  cursor: pointer; transition: opacity 0.15s, transform 0.1s;
+}
+.btn-log:hover { opacity: 0.85; }
+.btn-log:active { transform: scale(0.94); }
+
+.btn-close {
+  width: 24px; height: 24px; border: none; border-radius: 7px;
+  background: transparent; color: var(--text-2);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: background-color 0.15s;
+}
+.btn-close:hover { background: var(--fill); color: var(--text); }
+.btn-close svg { width: 13px; height: 13px; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="toast-card" id="card">
+    <div class="badge" id="badge"></div>
+    <div class="body">
+      <div class="title" id="title"></div>
+      <div class="sub" id="sub"></div>
+    </div>
+    <div class="actions">
+      <button class="btn-log" id="btn-log" hidden>Лог</button>
+      <button class="btn-close" id="btn-close" title="Закрыть">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+const DATA = __TOAST_DATA__;
+if (DATA.theme && DATA.theme !== "system") {
+  document.documentElement.dataset.theme = DATA.theme;
+}
+
+const card = document.getElementById("card");
+const badge = document.getElementById("badge");
+const title = document.getElementById("title");
+const sub = document.getElementById("sub");
+const btnLog = document.getElementById("btn-log");
+const btnClose = document.getElementById("btn-close");
+
+const hasErrors = DATA.failed > 0;
+const sec = (DATA.elapsed_ms / 1000).toFixed(DATA.elapsed_ms < 1000 ? 2 : 1);
+const fmt = String(DATA.format || "jpg").toUpperCase();
+
+if (hasErrors) {
+  badge.classList.add("warn");
+  badge.innerHTML = '<svg viewBox="0 0 24 24"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>';
+  title.textContent = DATA.succeeded > 0 ? "Готово с ошибками" : "Ошибка обработки";
+  sub.textContent = `Успешно: ${DATA.succeeded} · Ошибок: ${DATA.failed} (${sec} с)`;
+  if (DATA.log_path) {
+    btnLog.hidden = false;
+    btnLog.addEventListener("click", () => {
+      window.ipc.postMessage(JSON.stringify({ type: "open_log", path: DATA.log_path }));
+    });
+  }
+} else {
+  badge.innerHTML = '<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>';
+  title.textContent = `Готово · файлов: ${DATA.succeeded}`;
+  sub.textContent = `Сохранено в ${fmt} за ${sec} с`;
+}
+
+let timer = null;
+function closeToast() {
+  clearTimeout(timer);
+  card.classList.remove("show");
+  card.classList.add("hide");
+  setTimeout(() => window.ipc.postMessage(JSON.stringify({ type: "close" })), 220);
+}
+
+function scheduleClose() {
+  clearTimeout(timer);
+  timer = setTimeout(closeToast, hasErrors ? 6000 : 3500);
+}
+
+btnClose.addEventListener("click", closeToast);
+card.addEventListener("mouseenter", () => clearTimeout(timer));
+card.addEventListener("mouseleave", scheduleClose);
+
+requestAnimationFrame(() => {
+  card.classList.add("show");
+  scheduleClose();
+});
+</script>
+</body>
+</html>
