@@ -495,12 +495,19 @@ titlebar.addEventListener("mousedown", (e) => {
 document.getElementById("btn-min").addEventListener("click", () => {
   window.ipc.postMessage(JSON.stringify({ type: "minimize" }));
 });
-document.getElementById("btn-close").addEventListener("click", () => {
+function closeWindow() {
+  const parsed = Math.max(64, Math.min(10000, Math.round(Number(widthInput.value)) || config.target_width));
+  if (parsed !== config.target_width) {
+    config.target_width = parsed;
+    window.ipc.postMessage(JSON.stringify({ type: "save", config }));
+  }
   window.ipc.postMessage(JSON.stringify({ type: "close" }));
-});
+}
+
+document.getElementById("btn-close").addEventListener("click", closeWindow);
 window.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
-    window.ipc.postMessage(JSON.stringify({ type: "close" }));
+    closeWindow();
   }
 });
 

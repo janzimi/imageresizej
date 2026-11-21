@@ -1,22 +1,30 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::env;
-use std::process::Command;
-use std::time::Duration;
 use std::fs::OpenOptions;
 use std::io::Write;
+use std::process::Command;
+use std::time::Duration;
 
 use resizer_core::{AppConfig, ToastPayload};
 use serde::{Deserialize, Serialize};
-use tao::dpi::{LogicalPosition, LogicalSize};
+use tao::dpi::{LogicalSize, PhysicalPosition};
 use tao::event::{Event, WindowEvent};
 use tao::event_loop::{ControlFlow, EventLoopBuilder};
-use tao::window::{Icon, WindowBuilder};
-use wry::{WebContext, WebViewBuilder};
+use tao::window::{Icon, Window, WindowBuilder};
+use wry::{WebContext, WebView, WebViewBuilder};
 
 const SETTINGS_HTML: &str = include_str!("../assets/settings.html");
 const TOAST_HTML: &str = include_str!("../assets/toast.html");
 const APP_ICON_BYTES: &[u8] = include_bytes!("../../../assets/icon.ico");
+
+/// Гарантирует правильный порядок освобождения ресурсов (сверху вниз):
+/// сначала WebView, затем нативное окно, и только потом WebContext.
+struct ManagedWebView {
+    _webview: WebView,
+    window: Window,
+    _web_context: WebContext,
+}
 
 #[derive(Serialize)]
 struct SettingsState {
@@ -55,7 +63,7 @@ fn escape_inline_json(json: &str) -> String {
 
 fn open_file_in_os(path: &str) {
     #[cfg(target_os = "windows")]
-    let _ = Command::new("cmd").args(["/C", "start", "", path]).spawn();
+    let _ = Command::new("notepad.exe").arg(path).spawn();
 
     #[cfg(target_os = "linux")]
     let _ = Command::new("xdg-open").arg(path).spawn();
@@ -68,10 +76,7 @@ fn log_ui_error(msg: &str) {
     }
 }
 
-fn build_webview(
-    builder: WebViewBuilder<'_>,
-    window: &tao::window::Window,
-) -> Option<wry::WebView> {
+fn build_webview(builder: WebViewBuilder<'_>, window: &Window) -> Option<WebView> {
     let res = {
         #[cfg(not(target_os = "linux"))]
         {
@@ -109,7 +114,6 @@ fn run_settings() {
 
     let win_w = 480.0_f64;
 
-    // Создаём окно скрытым и с другой высотой — ресайз перед показом заставит WebView2 отрисоваться сразу
     let mut wb = WindowBuilder::new()
         .with_title("ImageResizerJ")
         .with_inner_size(LogicalSize::new(win_w, 200.0))
@@ -160,7 +164,12 @@ fn run_settings() {
         return;
     };
 
-    // Страховка: если событие ready почему-то задержится, покажем окно принудительно
+    let managed = ManagedWebView {
+        _webview: webview,
+        window,
+        _web_context: web_context,
+    };
+
     std::thread::spawn(move || {
         std::thread::sleep(Duration::from_millis(1500));
         let _ = proxy.send_event(UserEvent::Ready(620.0));
@@ -169,7 +178,6 @@ fn run_settings() {
     let mut is_shown = false;
 
     event_loop.run(move |event, _, control_flow| {
-        let _keep = (&webview, &window, &web_context);
         *control_flow = ControlFlow::Wait;
 
         match event {
@@ -177,28 +185,38 @@ fn run_settings() {
                 is_shown = true;
                 let mut win_h = content_h.ceil().clamp(320.0, 920.0);
 
-                if let Some(monitor) = window.primary_monitor() {
+                if let Some(monitor) = managed.window.primary_monitor() {
                     let scale = monitor.scale_factor();
-                    let screen_w = monitor.size().width as f64 / scale;
-                    let screen_h = monitor.size().height as f64 / scale;
-                    // Если экран маленький — ограничиваем по высоте, внутри включится плавный скролл
+                    let mon_pos = monitor.position();
+                    let mon_size = monitor.size();
+                    let screen_h = mon_size.height as f64 / scale;
                     win_h = win_h.min((screen_h - 56.0).max(320.0));
-                    let x = ((screen_w - win_w) / 2.0).max(0.0);
-                    let y = ((screen_h - win_h) / 2.0).max(0.0);
-                    window.set_inner_size(LogicalSize::new(win_w, win_h));
-                    window.set_outer_position(LogicalPosition::new(x, y));
+
+                    let win_w_phys = (win_w * scale).round() as i32;
+                    let win_h_phys = (win_h * scale).round() as i32;
+                    let x = mon_pos.x + ((mon_size.width as i32 - win_w_phys) / 2).max(0);
+                    let y = mon_pos.y + ((mon_size.height as i32 - win_h_phys) / 2).max(0);
+
+                    managed
+                        .window
+                        .set_inner_size(LogicalSize::new(win_w, win_h));
+                    managed
+                        .window
+                        .set_outer_position(PhysicalPosition::new(x, y));
                 } else {
-                    window.set_inner_size(LogicalSize::new(win_w, win_h));
+                    managed
+                        .window
+                        .set_inner_size(LogicalSize::new(win_w, win_h));
                 }
 
-                window.set_visible(true);
-                window.set_focus();
+                managed.window.set_visible(true);
+                managed.window.set_focus();
             }
             Event::UserEvent(UserEvent::Drag) => {
-                let _ = window.drag_window();
+                let _ = managed.window.drag_window();
             }
             Event::UserEvent(UserEvent::Minimize) => {
-                window.set_minimized(true);
+                managed.window.set_minimized(true);
             }
             Event::WindowEvent {
                 event: WindowEvent::CloseRequested,
@@ -242,15 +260,19 @@ fn run_toast(payload_json: &str) {
         wb = wb.with_skip_taskbar(true).with_undecorated_shadow(false);
     }
 
-    let window = wb.build(&event_loop).expect("Не удалось создать окно тоста");
+    let window = wb
+        .build(&event_loop)
+        .expect("Не удалось создать окно тоста");
 
     if let Some(monitor) = window.primary_monitor() {
         let scale = monitor.scale_factor();
-        let screen_w = monitor.size().width as f64 / scale;
-        let screen_h = monitor.size().height as f64 / scale;
-        let x = (screen_w - toast_w - 10.0).max(0.0);
-        let y = (screen_h - toast_h - 54.0).max(0.0);
-        window.set_outer_position(LogicalPosition::new(x, y));
+        let mon_pos = monitor.position();
+        let mon_size = monitor.size();
+        let toast_w_phys = ((toast_w + 10.0) * scale).round() as i32;
+        let toast_h_phys = ((toast_h + 54.0) * scale).round() as i32;
+        let x = mon_pos.x + (mon_size.width as i32 - toast_w_phys).max(0);
+        let y = mon_pos.y + (mon_size.height as i32 - toast_h_phys).max(0);
+        window.set_outer_position(PhysicalPosition::new(x, y));
     }
 
     let mut web_context = WebContext::new(Some(AppConfig::webview_data_dir("webview-toast")));
@@ -277,13 +299,19 @@ fn run_toast(payload_json: &str) {
         return;
     };
 
+    let managed = ManagedWebView {
+        _webview: webview,
+        window,
+        _web_context: web_context,
+    };
+
     std::thread::spawn(move || {
         std::thread::sleep(Duration::from_secs(20));
         let _ = proxy.send_event(UserEvent::Close);
     });
 
     event_loop.run(move |event, _, control_flow| {
-        let _keep = (&webview, &window, &web_context);
+        let _ = &managed;
         *control_flow = ControlFlow::Wait;
 
         match event {

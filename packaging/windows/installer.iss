@@ -1,6 +1,8 @@
 #define AppName "ImageResizerJ"
-#define AppVersion "0.2.0"
-#define StageDir "C:\RustTarget\imageresizej\stage"
+#define AppVersion "0.2.1"
+#ifndef StageDir
+  #define StageDir "C:\RustTarget\stage"
+#endif
 #define Clsid "{7D4B3C9E-5A1F-4E82-9B6A-3C8D1F2E4A50}"
 
 [Setup]
@@ -27,8 +29,8 @@ ChangesAssociations=yes
 Name: "russian"; MessagesFile: "compiler:Languages\Russian.isl"
 
 [Files]
-Source: "{#StageDir}\imageresizej.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#StageDir}\resizer-worker.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#StageDir}\imageresizej.exe"; DestDir: "{app}"; Flags: ignoreversion restartreplace
+Source: "{#StageDir}\resizer-worker.exe"; DestDir: "{app}"; Flags: ignoreversion restartreplace
 Source: "{#StageDir}\resizer_win_shell.dll"; DestDir: "{app}"; Flags: ignoreversion restartreplace uninsrestartdelete
 Source: "{#StageDir}\ImageResizerJ.msix"; DestDir: "{app}"; Flags: ignoreversion; Check: IsWindows11
 Source: "{#StageDir}\ImageResizerJ.cer"; DestDir: "{app}"; Flags: ignoreversion; Check: IsWindows11
@@ -85,14 +87,18 @@ Root: HKLM; Subkey: "SOFTWARE\Classes\SystemFileAssociations\.tiff\shell\ImageRe
 
 [Run]
 ; ── Регистрация нового контекстного меню для Windows 11 ──
-Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -Command ""Import-Certificate -FilePath '{app}\ImageResizerJ.cer' -CertStoreLocation 'Cert:\LocalMachine\Root' | Out-Null"""; StatusMsg: "Установка сертификата расширения Проводника..."; Flags: runhidden waituntilterminated; Check: IsWindows11
-Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -Command ""Get-AppxPackage -Name ImageResizerJ -ErrorAction SilentlyContinue | Remove-AppxPackage -ErrorAction SilentlyContinue; Add-AppxPackage -Path '{app}\ImageResizerJ.msix' -ExternalLocation '{app}'"""; StatusMsg: "Регистрация контекстного меню Windows 11..."; Flags: runhidden waituntilterminated runasoriginaluser; Check: IsWindows11
+Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -Command ""Import-Certificate -FilePath '{code:GetPsAppPath}\ImageResizerJ.cer' -CertStoreLocation 'Cert:\LocalMachine\Root' | Out-Null"""; StatusMsg: "Установка сертификата расширения Проводника..."; Flags: runhidden waituntilterminated; Check: IsWindows11
+Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -Command ""Get-AppxPackage -Name ImageResizerJ -ErrorAction SilentlyContinue | Remove-AppxPackage -ErrorAction SilentlyContinue; Add-AppxPackage -Path '{code:GetPsAppPath}\ImageResizerJ.msix' -ExternalLocation '{code:GetPsAppPath}'"""; StatusMsg: "Регистрация контекстного меню Windows 11..."; Flags: runhidden waituntilterminated runasoriginaluser; Check: IsWindows11
 ; Предложить открыть настройки сразу после установки
 Filename: "{app}\imageresizej.exe"; Description: "Открыть настройки ImageResizerJ"; Flags: nowait postinstall skipifsilent runasoriginaluser
 
 [UninstallRun]
 Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -Command ""Get-AppxPackage -AllUsers -Name ImageResizerJ -ErrorAction SilentlyContinue | Remove-AppxPackage -AllUsers -ErrorAction SilentlyContinue; Get-AppxPackage -Name ImageResizerJ -ErrorAction SilentlyContinue | Remove-AppxPackage -ErrorAction SilentlyContinue"""; RunOnceId: "RemoveAppx"; Flags: runhidden waituntilterminated; Check: IsWindows11
 Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -Command ""Get-ChildItem Cert:\LocalMachine\Root | Where-Object {{ $_.Subject -eq 'CN=ImageResizerJ' } | Remove-Item -ErrorAction SilentlyContinue"""; RunOnceId: "RemoveCert"; Flags: runhidden waituntilterminated; Check: IsWindows11
+
+[UninstallDelete]
+Type: filesandordirs; Name: "{localappdata}\ImageResizerJ\data\webview"
+Type: filesandordirs; Name: "{localappdata}\ImageResizerJ\data\webview-toast"
 
 [Code]
 function IsWindows11: Boolean;
@@ -106,4 +112,10 @@ end;
 function IsWindows10OrOlder: Boolean;
 begin
   Result := not IsWindows11;
+end;
+
+function GetPsAppPath(Param: String): String;
+begin
+  Result := ExpandConstant('{app}');
+  StringChangeEx(Result, '''', '''''', True);
 end;

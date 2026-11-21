@@ -33,9 +33,10 @@ fn collect_input_paths() -> Vec<PathBuf> {
         let list_path = PathBuf::from(&args[1]);
         let content = fs::read_to_string(&list_path).unwrap_or_default();
         let _ = fs::remove_file(&list_path);
-        return content
+        let text = content.strip_prefix('\u{feff}').unwrap_or(&content);
+        return text
             .lines()
-            .map(str::trim)
+            .map(|line| line.trim_end_matches('\r'))
             .filter(|line| !line.is_empty())
             .map(PathBuf::from)
             .collect();

@@ -253,11 +253,7 @@ fn save_image_atomic(
 ) -> Result<(), Box<dyn Error>> {
     let parent = target_path.parent().unwrap_or_else(|| Path::new(""));
     let seq = TEMP_FILE_COUNTER.fetch_add(1, Ordering::Relaxed);
-    let tmp_path = parent.join(format!(
-        ".imageresizej_tmp_{}_{}",
-        std::process::id(),
-        seq
-    ));
+    let tmp_path = parent.join(format!(".imageresizej_tmp_{}_{}", std::process::id(), seq));
 
     if let Err(err) = encode_image_to_path(img, &tmp_path, config) {
         let _ = fs::remove_file(&tmp_path);
@@ -351,8 +347,7 @@ pub fn process_batch(paths: &[PathBuf], config: &AppConfig) -> BatchSummary {
     let results: Vec<Result<PathBuf, (&Path, String)>> = unique_paths
         .par_iter()
         .map(|path| {
-            process_single(path, config, &reserved)
-                .map_err(|e| (path.as_path(), e.to_string()))
+            process_single(path, config, &reserved).map_err(|e| (path.as_path(), e.to_string()))
         })
         .collect();
 

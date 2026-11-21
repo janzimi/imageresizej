@@ -14,7 +14,7 @@ use windows::Win32::Foundation::{
 use windows::Win32::System::Com::{
     CoTaskMemAlloc, CoTaskMemFree, IBindCtx, IClassFactory, IClassFactory_Impl,
 };
-use windows::Win32::System::LibraryLoader::GetModuleFileNameW;
+use windows::Win32::System::LibraryLoader::{DisableThreadLibraryCalls, GetModuleFileNameW};
 use windows::Win32::System::SystemServices::DLL_PROCESS_ATTACH;
 use windows::Win32::UI::Shell::{
     IEnumExplorerCommand, IExplorerCommand, IExplorerCommand_Impl, IShellItemArray,
@@ -71,7 +71,7 @@ impl ImageResizerCommand {
 
 impl Drop for ImageResizerCommand {
     fn drop(&mut self) {
-        ACTIVE_OBJECTS.fetch_sub(1, Ordering::Relaxed);
+        ACTIVE_OBJECTS.fetch_sub(1, Ordering::AcqRel);
     }
 }
 
@@ -96,11 +96,7 @@ impl IExplorerCommand_Impl for ImageResizerCommand_Impl {
         Ok(CLSID_IMAGE_RESIZER_J)
     }
 
-    fn GetState(
-        &self,
-        _psiitemarray: Option<&IShellItemArray>,
-        _foktobeslow: BOOL,
-    ) -> Result<u32> {
+    fn GetState(&self, _psiitemarray: Option<&IShellItemArray>, _foktobeslow: BOOL) -> Result<u32> {
         Ok(0) // ECS_ENABLED — пункт всегда активен
     }
 
@@ -153,11 +149,14 @@ impl IExplorerCommand_Impl for ImageResizerCommand_Impl {
             .collect::<Vec<_>>()
             .join("\n");
 
-        if fs::write(&list_file, payload).is_ok() {
-            let _ = Command::new(&worker)
+        if fs::write(&list_file, payload).is_ok()
+            && Command::new(&worker)
                 .arg("--from-file")
                 .arg(&list_file)
-                .spawn();
+                .spawn()
+                .is_err()
+        {
+            let _ = fs::remove_file(&list_file);
         }
 
         Ok(())
@@ -184,7 +183,7 @@ impl ClassFactory {
 
 impl Drop for ClassFactory {
     fn drop(&mut self) {
-        ACTIVE_OBJECTS.fetch_sub(1, Ordering::Relaxed);
+        ACTIVE_OBJECTS.fetch_sub(1, Ordering::AcqRel);
     }
 }
 
@@ -212,7 +211,7 @@ impl IClassFactory_Impl for ClassFactory_Impl {
         if flock.as_bool() {
             ACTIVE_OBJECTS.fetch_add(1, Ordering::Relaxed);
         } else {
-            ACTIVE_OBJECTS.fetch_sub(1, Ordering::Relaxed);
+            ACTIVE_OBJECTS.fetch_sub(1, Ordering::AcqRel);
         }
         Ok(())
     }
@@ -222,6 +221,7 @@ impl IClassFactory_Impl for ClassFactory_Impl {
 pub extern "system" fn DllMain(hinst: HMODULE, reason: u32, _reserved: *mut c_void) -> BOOL {
     if reason == DLL_PROCESS_ATTACH {
         DLL_HMODULE.store(hinst.0 as usize, Ordering::Relaxed);
+        let _ = unsafe { DisableThreadLibraryCalls(hinst) };
     }
     TRUE
 }
@@ -247,7 +247,7 @@ pub unsafe extern "system" fn DllGetClassObject(
 
 #[unsafe(no_mangle)]
 pub extern "system" fn DllCanUnloadNow() -> HRESULT {
-    if ACTIVE_OBJECTS.load(Ordering::Relaxed) == 0 {
+    if ACTIVE_OBJECTS.load(Ordering::Acquire) == 0 {
         S_OK
     } else {
         S_FALSE
