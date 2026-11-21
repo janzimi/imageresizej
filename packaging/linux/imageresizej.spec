@@ -1,7 +1,7 @@
 %add_debuginfo_skiplist %_bindir/*
 
 Name:           imageresizej
-Version:        0.2.1
+Version:        0.3.0
 Release:        alt1
 Summary:        Fast batch image resizer and converter
 License:        MIT
@@ -42,5 +42,5 @@ update-desktop-database -q /usr/share/applications &>/dev/null || :
 %_datadir/kio/servicemenus/imageresizej.desktop
 
 %changelog
-* Sat Nov 21 2026 Vladimir Piskov <1oblivka@mail.ru> 0.2.1-alt1
+* Sat Nov 21 2026 Vladimir Piskov <1oblivka@mail.ru> 0.3.0-alt1
 - Initial ALT Education 11.2 (KDE Plasma 6) package
