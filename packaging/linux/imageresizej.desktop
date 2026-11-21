@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=ImageResizerJ
+GenericName=Image Resizer
+GenericName[ru]=Быстрое сжатие изображений
+Comment=Быстрое сжатие и конвертация изображений
+Exec=/usr/bin/imageresizej
+Icon=imageresizej
+Terminal=false
+Categories=Graphics;Utility;
+StartupWMClass=imageresizej

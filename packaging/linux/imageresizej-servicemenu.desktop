@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Service
+MimeType=image/jpeg;image/png;image/webp;image/heif;image/heic;image/avif;image/bmp;image/tiff;
+Actions=resize;
+X-KDE-Priority=TopLevel
+
+[Desktop Action resize]
+Name=Сжать с ImageResizerJ
+Icon=imageresizej
+Exec=/usr/bin/resizer-worker %F

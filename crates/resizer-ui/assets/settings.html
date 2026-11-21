@@ -103,9 +103,12 @@ html, body {
 ::-webkit-scrollbar-thumb:hover { background-color: rgba(120, 120, 128, 0.55); }
 
 .app-wrap {
-  width: 100%; height: 100%;
+  width: 480px; height: 100%;
   padding: 14px;
   display: flex;
+}
+.content-inner {
+  display: flow-root;
 }
 
 .window-shell {
@@ -348,6 +351,7 @@ input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.14); }
     </header>
 
     <main class="window-body" id="window-body">
+      <div class="content-inner" id="content-inner">
       <section class="group">
         <h2 class="group-title">Формат и качество</h2>
         <div class="card">
@@ -446,6 +450,7 @@ input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.14); }
       </section>
 
       <p class="footnote" id="config-path"></p>
+      </div>
     </main>
 
     <div class="autosave-toast" id="toast">
@@ -463,7 +468,7 @@ const HINTS = {
   jpg:  "Максимальная совместимость",
   png:  "Без потерь, сохраняет прозрачность",
   webp: "Быстро и компактно, с прозрачностью",
-  avif: "Минимальный размер, медленнее кодируется"
+  avif: "Минимальный размер, медленнее"
 };
 
 const titlebar = document.getElementById("titlebar");
@@ -589,9 +594,10 @@ showNotif.addEventListener("change", () => { config.show_notifications = showNot
 applyUI();
 
 // Вычисляем реальную высоту всего контента и даём команду Rust показать окно
+const contentInner = document.getElementById("content-inner");
 setTimeout(() => {
-  // 28px = внешние отступы .app-wrap под тень + 2px на рамку .window-shell
-  const totalHeight = Math.ceil(titlebar.offsetHeight + winBody.scrollHeight + 30);
+  // 28px (.app-wrap padding) + 2px (.window-shell border) + 30px (.window-body padding) = 60px
+  const totalHeight = Math.ceil(titlebar.offsetHeight + contentInner.offsetHeight + 60);
   window.ipc.postMessage(JSON.stringify({ type: "ready", height: totalHeight }));
 }, 0);
 </script>

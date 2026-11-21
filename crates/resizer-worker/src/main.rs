@@ -19,12 +19,54 @@ fn find_ui_binary() -> Option<PathBuf> {
     candidate.is_file().then_some(candidate)
 }
 
+#[cfg(not(target_os = "linux"))]
 fn show_toast(payload: &ToastPayload) {
     if let Some(ui_bin) = find_ui_binary()
         && let Ok(json) = serde_json::to_string(payload)
     {
         let _ = Command::new(ui_bin).arg("--toast").arg(json).spawn();
     }
+}
+
+#[cfg(target_os = "linux")]
+fn show_toast(payload: &ToastPayload) {
+    use notify_rust::{Notification, Timeout, Urgency};
+
+    let sec = if payload.elapsed_ms < 1000 {
+        format!("{:.2}", payload.elapsed_ms as f64 / 1000.0)
+    } else {
+        format!("{:.1}", payload.elapsed_ms as f64 / 1000.0)
+    };
+
+    let (title, body, timeout_ms, urgency) = if payload.failed > 0 {
+        let title = if payload.succeeded > 0 {
+            "Готово с ошибками".to_string()
+        } else {
+            "Ошибка обработки".to_string()
+        };
+        let mut body = format!(
+            "Успешно: {} · Ошибок: {} ({sec} с)",
+            payload.succeeded, payload.failed
+        );
+        if let Some(log) = &payload.log_path {
+            body.push_str(&format!("\nЛог: {log}"));
+        }
+        (title, body, 6000, Urgency::Critical)
+    } else {
+        let fmt = payload.format.extension().to_uppercase();
+        let title = format!("Готово · файлов: {}", payload.succeeded);
+        let body = format!("Сохранено в {fmt} за {sec} с");
+        (title, body, 3500, Urgency::Normal)
+    };
+
+    let _ = Notification::new()
+        .appname("ImageResizerJ")
+        .summary(&title)
+        .body(&body)
+        .icon("imageresizej")
+        .urgency(urgency)
+        .timeout(Timeout::Milliseconds(timeout_ms))
+        .show();
 }
 
 fn collect_input_paths() -> Vec<PathBuf> {

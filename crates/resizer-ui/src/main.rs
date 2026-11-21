@@ -114,6 +114,7 @@ fn run_settings() {
 
     let win_w = 480.0_f64;
 
+    #[cfg_attr(not(target_os = "windows"), allow(unused_mut))]
     let mut wb = WindowBuilder::new()
         .with_title("ImageResizerJ")
         .with_inner_size(LogicalSize::new(win_w, 200.0))
@@ -245,6 +246,7 @@ fn run_toast(payload_json: &str) {
     let toast_w = 368.0_f64;
     let toast_h = 98.0_f64;
 
+    #[cfg_attr(not(target_os = "windows"), allow(unused_mut))]
     let mut wb = WindowBuilder::new()
         .with_title("ImageResizerJ")
         .with_inner_size(LogicalSize::new(toast_w, toast_h))
