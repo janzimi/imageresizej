@@ -20,7 +20,7 @@ const APP_ICON_BYTES: &[u8] = include_bytes!("../../../assets/icon.ico");
 
 // Порядок полей критичен для drop: WebView -> Window -> WebContext
 struct ManagedWebView {
-    _webview: WebView,
+    webview: WebView,
     window: Window,
     _web_context: WebContext,
 }
@@ -46,6 +46,7 @@ enum IpcMessage {
 
 enum UserEvent {
     Ready(f64),
+    FallbackReady(f64),
     Resize(f64),
     Drag,
     Minimize,
@@ -75,6 +76,50 @@ fn log_ui_error(msg: &str) {
     let log_path = AppConfig::webview_data_dir("logs").join("ui_error.log");
     if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(log_path) {
         let _ = writeln!(file, "{msg}");
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn enable_minimize_box(window: &Window) {
+    use tao::platform::windows::WindowExtWindows;
+
+    const GWL_STYLE: i32 = -16;
+    const WS_MINIMIZEBOX: i32 = 0x0002_0000;
+    const SWP_NOSIZE: u32 = 0x0001;
+    const SWP_NOMOVE: u32 = 0x0002;
+    const SWP_NOZORDER: u32 = 0x0004;
+    const SWP_FRAMECHANGED: u32 = 0x0020;
+
+    #[link(name = "user32")]
+    unsafe extern "system" {
+        fn GetWindowLongW(hwnd: isize, index: i32) -> i32;
+        fn SetWindowLongW(hwnd: isize, index: i32, new_long: i32) -> i32;
+        fn SetWindowPos(
+            hwnd: isize,
+            insert_after: isize,
+            x: i32,
+            y: i32,
+            cx: i32,
+            cy: i32,
+            flags: u32,
+        ) -> i32;
+    }
+
+    let hwnd = window.hwnd();
+    unsafe {
+        let style = GetWindowLongW(hwnd, GWL_STYLE);
+        if style != 0 && (style & WS_MINIMIZEBOX) == 0 {
+            SetWindowLongW(hwnd, GWL_STYLE, style | WS_MINIMIZEBOX);
+            SetWindowPos(
+                hwnd,
+                0,
+                0,
+                0,
+                0,
+                0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED,
+            );
+        }
     }
 }
 
@@ -112,6 +157,34 @@ fn clamp_window_height(window: &Window, content_h: f64) -> f64 {
     win_h
 }
 
+fn center_and_resize(window: &Window, win_w: f64, win_h: f64) {
+    if let Some(monitor) = window.primary_monitor() {
+        let scale = monitor.scale_factor();
+        let mon_pos = monitor.position();
+        let mon_size = monitor.size();
+
+        let win_w_phys = (win_w * scale).round() as i32;
+        let win_h_phys = (win_h * scale).round() as i32;
+        let x = mon_pos.x + ((mon_size.width as i32 - win_w_phys) / 2).max(0);
+        let y = mon_pos.y + ((mon_size.height as i32 - win_h_phys) / 2).max(0);
+
+        window.set_inner_size(LogicalSize::new(win_w, win_h));
+        window.set_outer_position(PhysicalPosition::new(x, y));
+    } else {
+        window.set_inner_size(LogicalSize::new(win_w, win_h));
+    }
+}
+
+fn refresh_after_restore(managed: &ManagedWebView, win_w: f64, win_h: f64) {
+    managed
+        .window
+        .set_inner_size(LogicalSize::new(win_w, win_h));
+    managed.window.request_redraw();
+    let _ = managed.webview.evaluate_script(
+        "document.documentElement.style.transform='translateZ(0)';requestAnimationFrame(()=>{document.documentElement.style.transform='';});",
+    );
+}
+
 fn run_settings() {
     let config = AppConfig::load_or_create();
     let state = SettingsState {
@@ -144,6 +217,9 @@ fn run_settings() {
     }
 
     let window = wb.build(&event_loop).expect("Failed to create window");
+
+    #[cfg(target_os = "windows")]
+    enable_minimize_box(&window);
 
     let mut web_context = WebContext::new(Some(AppConfig::webview_data_dir("webview")));
     let ipc_proxy = proxy.clone();
@@ -182,62 +258,74 @@ fn run_settings() {
     };
 
     let managed = ManagedWebView {
-        _webview: webview,
+        webview,
         window,
         _web_context: web_context,
     };
 
     std::thread::spawn(move || {
-        std::thread::sleep(Duration::from_millis(1500));
-        let _ = proxy.send_event(UserEvent::Ready(670.0));
+        std::thread::sleep(Duration::from_millis(4000));
+        let _ = proxy.send_event(UserEvent::FallbackReady(670.0));
     });
 
     let mut is_shown = false;
+    let mut was_minimized = false;
+    let mut current_win_h = 670.0_f64;
 
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;
 
         match event {
-            Event::UserEvent(UserEvent::Ready(content_h)) if !is_shown => {
-                is_shown = true;
-                let win_h = clamp_window_height(&managed.window, content_h);
-
-                if let Some(monitor) = managed.window.primary_monitor() {
-                    let scale = monitor.scale_factor();
-                    let mon_pos = monitor.position();
-                    let mon_size = monitor.size();
-
-                    let win_w_phys = (win_w * scale).round() as i32;
-                    let win_h_phys = (win_h * scale).round() as i32;
-                    let x = mon_pos.x + ((mon_size.width as i32 - win_w_phys) / 2).max(0);
-                    let y = mon_pos.y + ((mon_size.height as i32 - win_h_phys) / 2).max(0);
-
-                    managed
-                        .window
-                        .set_inner_size(LogicalSize::new(win_w, win_h));
-                    managed
-                        .window
-                        .set_outer_position(PhysicalPosition::new(x, y));
+            Event::UserEvent(UserEvent::Ready(content_h)) => {
+                current_win_h = clamp_window_height(&managed.window, content_h);
+                if !is_shown {
+                    is_shown = true;
+                    center_and_resize(&managed.window, win_w, current_win_h);
+                    managed.window.set_visible(true);
+                    managed.window.set_focus();
                 } else {
                     managed
                         .window
-                        .set_inner_size(LogicalSize::new(win_w, win_h));
+                        .set_inner_size(LogicalSize::new(win_w, current_win_h));
                 }
-
+            }
+            Event::UserEvent(UserEvent::FallbackReady(content_h)) if !is_shown => {
+                is_shown = true;
+                current_win_h = clamp_window_height(&managed.window, content_h);
+                center_and_resize(&managed.window, win_w, current_win_h);
                 managed.window.set_visible(true);
                 managed.window.set_focus();
             }
             Event::UserEvent(UserEvent::Resize(content_h)) if is_shown => {
-                let win_h = clamp_window_height(&managed.window, content_h);
+                current_win_h = clamp_window_height(&managed.window, content_h);
                 managed
                     .window
-                    .set_inner_size(LogicalSize::new(win_w, win_h));
+                    .set_inner_size(LogicalSize::new(win_w, current_win_h));
             }
             Event::UserEvent(UserEvent::Drag) => {
                 let _ = managed.window.drag_window();
             }
             Event::UserEvent(UserEvent::Minimize) => {
+                was_minimized = true;
                 managed.window.set_minimized(true);
+            }
+            Event::WindowEvent {
+                event: WindowEvent::Resized(size),
+                ..
+            } => {
+                if size.width == 0 || size.height == 0 {
+                    was_minimized = true;
+                } else if was_minimized && is_shown {
+                    was_minimized = false;
+                    refresh_after_restore(&managed, win_w, current_win_h);
+                }
+            }
+            Event::WindowEvent {
+                event: WindowEvent::Focused(true),
+                ..
+            } if was_minimized && is_shown && !managed.window.is_minimized() => {
+                was_minimized = false;
+                refresh_after_restore(&managed, win_w, current_win_h);
             }
             Event::WindowEvent {
                 event: WindowEvent::CloseRequested,
@@ -322,7 +410,7 @@ fn run_toast(payload_json: &str) {
     };
 
     let managed = ManagedWebView {
-        _webview: webview,
+        webview,
         window,
         _web_context: web_context,
     };

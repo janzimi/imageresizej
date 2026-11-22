@@ -2,7 +2,7 @@
 
 Быстрая нативная утилита на **Rust** для пакетного сжатия, изменения размера и конвертации изображений прямо из контекстного меню файлового менеджера.
 
-![Version](https://img.shields.io/badge/version-0.3.1-orange)
+![Version](https://img.shields.io/badge/version-0.3.2-orange)
 ![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11%20%7C%20ALT%20Linux-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -28,7 +28,7 @@
 
 ### Windows 10 / Windows 11 (x64)
 
-1. Скачайте `ImageResizerJ_Setup_0.3.1.exe` со страницы релизов.
+1. Скачайте `ImageResizerJ_Setup_0.3.2.exe` со страницы релизов.
 2. Запустите установщик — он установит приложение, зарегистрирует пункт контекстного меню Проводника и добавит ярлык настроек в меню «Пуск».
 
 ### Альт Образование 11.2 / Альт Рабочая станция K (x86_64, KDE Plasma 6)
@@ -37,7 +37,7 @@
 
 ```bash
 su -
-apt-get install -y /путь/к/imageresizej-0.3.1-alt1.x86_64.rpm
+apt-get install -y /путь/к/imageresizej-0.3.2-alt1.x86_64.rpm
 ```
 
 После установки:

@@ -1,5 +1,5 @@
 #define AppName "ImageResizerJ"
-#define AppVersion "0.3.1"
+#define AppVersion "0.3.2"
 #ifndef StageDir
   #define StageDir "C:\RustTarget\stage"
 #endif

@@ -101,6 +101,7 @@ pub struct AppConfig {
     pub theme: ThemeMode,
     pub language: LanguageMode,
     pub show_notifications: bool,
+    pub hint_dismissed: bool,
 }
 
 impl Default for AppConfig {
@@ -114,6 +115,7 @@ impl Default for AppConfig {
             theme: ThemeMode::System,
             language: LanguageMode::Auto,
             show_notifications: true,
+            hint_dismissed: false,
         }
     }
 }
