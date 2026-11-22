@@ -1,5 +1,5 @@
 #define AppName "ImageResizerJ"
-#define AppVersion "0.3.0"
+#define AppVersion "0.3.1"
 #ifndef StageDir
   #define StageDir "C:\RustTarget\stage"
 #endif
@@ -23,10 +23,22 @@ UninstallDisplayIcon={app}\imageresizej.exe
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
+ShowLanguageDialog=auto
 ChangesAssociations=yes
 
 [Languages]
+Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "russian"; MessagesFile: "compiler:Languages\Russian.isl"
+
+[CustomMessages]
+english.ShortcutComment=Image compression settings
+russian.ShortcutComment=Настройки сжатия изображений
+english.InstallCertMsg=Installing Explorer extension certificate...
+russian.InstallCertMsg=Установка сертификата расширения Проводника...
+english.RegisterMenuMsg=Registering Windows 11 context menu...
+russian.RegisterMenuMsg=Регистрация контекстного меню Windows 11...
+english.LaunchSettings=Open ImageResizerJ settings
+russian.LaunchSettings=Открыть настройки ImageResizerJ
 
 [Files]
 Source: "{#StageDir}\imageresizej.exe"; DestDir: "{app}"; Flags: ignoreversion restartreplace
@@ -36,15 +48,13 @@ Source: "{#StageDir}\ImageResizerJ.msix"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#StageDir}\ImageResizerJ.cer"; DestDir: "{app}"; Flags: ignoreversion; Check: IsWindows11
 
 [Icons]
-Name: "{autoprograms}\{#AppName}"; Filename: "{app}\imageresizej.exe"; Comment: "Настройки сжатия изображений"
+Name: "{autoprograms}\{#AppName}"; Filename: "{app}\imageresizej.exe"; Comment: "{cm:ShortcutComment}"
 
 [Registry]
-; ── Регистрация COM DLL и контекстного меню только для Windows 10 ──
 Root: HKLM; Subkey: "SOFTWARE\Classes\CLSID\{{#Clsid}"; ValueType: string; ValueData: "ImageResizerJ Shell Extension"; Flags: uninsdeletekey; Check: IsWindows10OrOlder
 Root: HKLM; Subkey: "SOFTWARE\Classes\CLSID\{{#Clsid}\InprocServer32"; ValueType: string; ValueData: "{app}\resizer_win_shell.dll"; Flags: uninsdeletekey; Check: IsWindows10OrOlder
 Root: HKLM; Subkey: "SOFTWARE\Classes\CLSID\{{#Clsid}\InprocServer32"; ValueType: string; ValueName: "ThreadingModel"; ValueData: "Apartment"; Check: IsWindows10OrOlder
 
-; Привязка к типам изображений (MultiSelectModel=Player передаёт все выделенные файлы за один вызов)
 Root: HKLM; Subkey: "SOFTWARE\Classes\SystemFileAssociations\.jpg\shell\ImageResizerJ"; ValueType: string; ValueName: "ExplorerCommandHandler"; ValueData: "{{#Clsid}"; Flags: uninsdeletekey; Check: IsWindows10OrOlder
 Root: HKLM; Subkey: "SOFTWARE\Classes\SystemFileAssociations\.jpg\shell\ImageResizerJ"; ValueType: string; ValueName: "MultiSelectModel"; ValueData: "Player"; Check: IsWindows10OrOlder
 Root: HKLM; Subkey: "SOFTWARE\Classes\SystemFileAssociations\.jpg\shell\ImageResizerJ"; ValueType: string; ValueName: "CommandStateSync"; ValueData: ""; Check: IsWindows10OrOlder
@@ -86,11 +96,9 @@ Root: HKLM; Subkey: "SOFTWARE\Classes\SystemFileAssociations\.tiff\shell\ImageRe
 Root: HKLM; Subkey: "SOFTWARE\Classes\SystemFileAssociations\.tiff\shell\ImageResizerJ"; ValueType: string; ValueName: "CommandStateSync"; ValueData: ""; Check: IsWindows10OrOlder
 
 [Run]
-; ── Регистрация нового контекстного меню для Windows 11 ──
-Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -Command ""Import-Certificate -FilePath '{code:GetPsAppPath}\ImageResizerJ.cer' -CertStoreLocation 'Cert:\LocalMachine\Root' | Out-Null"""; StatusMsg: "Установка сертификата расширения Проводника..."; Flags: runhidden waituntilterminated; Check: IsWindows11
-Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -Command ""Get-AppxPackage -Name ImageResizerJ -ErrorAction SilentlyContinue | Remove-AppxPackage -ErrorAction SilentlyContinue; Add-AppxPackage -Path '{code:GetPsAppPath}\ImageResizerJ.msix' -ExternalLocation '{code:GetPsAppPath}'"""; StatusMsg: "Регистрация контекстного меню Windows 11..."; Flags: runhidden waituntilterminated runasoriginaluser; Check: IsWindows11
-; Предложить открыть настройки сразу после установки
-Filename: "{app}\imageresizej.exe"; Description: "Открыть настройки ImageResizerJ"; Flags: nowait postinstall skipifsilent runasoriginaluser
+Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -Command ""Import-Certificate -FilePath '{code:GetPsAppPath}\ImageResizerJ.cer' -CertStoreLocation 'Cert:\LocalMachine\Root' | Out-Null"""; StatusMsg: "{cm:InstallCertMsg}"; Flags: runhidden waituntilterminated; Check: IsWindows11
+Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -Command ""Get-AppxPackage -Name ImageResizerJ -ErrorAction SilentlyContinue | Remove-AppxPackage -ErrorAction SilentlyContinue; Add-AppxPackage -Path '{code:GetPsAppPath}\ImageResizerJ.msix' -ExternalLocation '{code:GetPsAppPath}'"""; StatusMsg: "{cm:RegisterMenuMsg}"; Flags: runhidden waituntilterminated runasoriginaluser; Check: IsWindows11
+Filename: "{app}\imageresizej.exe"; Description: "{cm:LaunchSettings}"; Flags: nowait postinstall skipifsilent runasoriginaluser
 
 [UninstallRun]
 Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -Command ""Get-AppxPackage -AllUsers -Name ImageResizerJ -ErrorAction SilentlyContinue | Remove-AppxPackage -AllUsers -ErrorAction SilentlyContinue; Get-AppxPackage -Name ImageResizerJ -ErrorAction SilentlyContinue | Remove-AppxPackage -ErrorAction SilentlyContinue"""; RunOnceId: "RemoveAppx"; Flags: runhidden waituntilterminated; Check: IsWindows11

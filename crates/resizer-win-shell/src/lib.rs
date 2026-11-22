@@ -22,14 +22,57 @@ use windows::Win32::UI::Shell::{
 };
 use windows::core::{GUID, HRESULT, IUnknown, Interface, PWSTR, Result, implement};
 
-/// Уникальный CLSID нашего расширения: {7D4B3C9E-5A1F-4E82-9B6A-3C8D1F2E4A50}
 const CLSID_IMAGE_RESIZER_J: GUID = GUID::from_u128(0x7d4b3c9e_5a1f_4e82_9b6a_3c8d1f2e4a50);
 
 static DLL_HMODULE: AtomicUsize = AtomicUsize::new(0);
 static ACTIVE_OBJECTS: AtomicUsize = AtomicUsize::new(0);
 static TEMP_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
-/// Выделяет UTF-16 строку в COM-куче (Проводник освободит её сам через CoTaskMemFree)
+fn detect_system_is_ru() -> bool {
+    #[link(name = "kernel32")]
+    unsafe extern "system" {
+        fn GetUserDefaultUILanguage() -> u16;
+    }
+
+    (unsafe { GetUserDefaultUILanguage() } & 0x03FF) == 0x19
+}
+
+fn extract_language_setting(json: &str) -> Option<&str> {
+    let mut rest = json;
+    while let Some(pos) = rest.find("\"language\"") {
+        rest = &rest[pos + "\"language\"".len()..];
+        let Some(after_colon) = rest.trim_start().strip_prefix(':') else {
+            continue;
+        };
+        let Some(after_quote) = after_colon.trim_start().strip_prefix('"') else {
+            continue;
+        };
+        let end = after_quote.find('"')?;
+        return Some(&after_quote[..end]);
+    }
+    None
+}
+
+fn is_russian() -> bool {
+    if let Some(appdata) = std::env::var_os("APPDATA") {
+        let cfg_path = PathBuf::from(appdata)
+            .join("ImageResizerJ")
+            .join("config")
+            .join("config.json");
+        if let Ok(text) = fs::read_to_string(cfg_path)
+            && let Some(lang) = extract_language_setting(&text)
+        {
+            if lang.eq_ignore_ascii_case("ru") {
+                return true;
+            }
+            if lang.eq_ignore_ascii_case("en") {
+                return false;
+            }
+        }
+    }
+    detect_system_is_ru()
+}
+
 fn alloc_pwstr(text: &str) -> Result<PWSTR> {
     let wide: Vec<u16> = text.encode_utf16().chain(std::iter::once(0)).collect();
     let byte_len = wide.len() * std::mem::size_of::<u16>();
@@ -43,7 +86,6 @@ fn alloc_pwstr(text: &str) -> Result<PWSTR> {
     Ok(PWSTR(ptr))
 }
 
-/// Возвращает папку, в которой лежит сама resizer_win_shell.dll
 fn dll_dir() -> Option<PathBuf> {
     let raw = DLL_HMODULE.load(Ordering::Relaxed);
     if raw == 0 {
@@ -77,7 +119,12 @@ impl Drop for ImageResizerCommand {
 
 impl IExplorerCommand_Impl for ImageResizerCommand_Impl {
     fn GetTitle(&self, _psiitemarray: Option<&IShellItemArray>) -> Result<PWSTR> {
-        alloc_pwstr("Сжать с ImageResizerJ")
+        let title = if is_russian() {
+            "Сжать с ImageResizerJ"
+        } else {
+            "Compress with ImageResizerJ"
+        };
+        alloc_pwstr(title)
     }
 
     fn GetIcon(&self, _psiitemarray: Option<&IShellItemArray>) -> Result<PWSTR> {
@@ -89,7 +136,12 @@ impl IExplorerCommand_Impl for ImageResizerCommand_Impl {
     }
 
     fn GetToolTip(&self, _psiitemarray: Option<&IShellItemArray>) -> Result<PWSTR> {
-        alloc_pwstr("Уменьшить и конвертировать выделенные изображения")
+        let tip = if is_russian() {
+            "Уменьшить и конвертировать выделенные изображения"
+        } else {
+            "Resize and convert selected images"
+        };
+        alloc_pwstr(tip)
     }
 
     fn GetCanonicalName(&self) -> Result<GUID> {
@@ -97,7 +149,7 @@ impl IExplorerCommand_Impl for ImageResizerCommand_Impl {
     }
 
     fn GetState(&self, _psiitemarray: Option<&IShellItemArray>, _foktobeslow: BOOL) -> Result<u32> {
-        Ok(0) // ECS_ENABLED — пункт всегда активен
+        Ok(0)
     }
 
     fn Invoke(
@@ -163,7 +215,7 @@ impl IExplorerCommand_Impl for ImageResizerCommand_Impl {
     }
 
     fn GetFlags(&self) -> Result<u32> {
-        Ok(0) // ECF_DEFAULT — одиночный пункт без подменю
+        Ok(0)
     }
 
     fn EnumSubCommands(&self) -> Result<IEnumExplorerCommand> {

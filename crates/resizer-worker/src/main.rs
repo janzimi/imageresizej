@@ -31,7 +31,9 @@ fn show_toast(payload: &ToastPayload) {
 #[cfg(target_os = "linux")]
 fn show_toast(payload: &ToastPayload) {
     use notify_rust::{Notification, Timeout, Urgency};
+    use resizer_core::ResolvedLanguage;
 
+    let is_ru = payload.language == ResolvedLanguage::Ru;
     let sec = if payload.elapsed_ms < 1000 {
         format!("{:.2}", payload.elapsed_ms as f64 / 1000.0)
     } else {
@@ -39,23 +41,44 @@ fn show_toast(payload: &ToastPayload) {
     };
 
     let (title, body, timeout_ms, urgency) = if payload.failed > 0 {
-        let title = if payload.succeeded > 0 {
-            "Готово с ошибками".to_string()
+        let title = match (is_ru, payload.succeeded > 0) {
+            (true, true) => "Готово с ошибками",
+            (true, false) => "Ошибка обработки",
+            (false, true) => "Done with errors",
+            (false, false) => "Processing failed",
+        }
+        .to_string();
+
+        let mut body = if is_ru {
+            format!(
+                "Успешно: {} · Ошибок: {} ({sec} с)",
+                payload.succeeded, payload.failed
+            )
         } else {
-            "Ошибка обработки".to_string()
+            format!(
+                "Succeeded: {} · Failed: {} ({sec} s)",
+                payload.succeeded, payload.failed
+            )
         };
-        let mut body = format!(
-            "Успешно: {} · Ошибок: {} ({sec} с)",
-            payload.succeeded, payload.failed
-        );
+
         if let Some(log) = &payload.log_path {
-            body.push_str(&format!("\nЛог: {log}"));
+            let label = if is_ru { "Лог" } else { "Log" };
+            body.push_str(&format!("\n{label}: {log}"));
         }
         (title, body, 6000, Urgency::Critical)
     } else {
         let fmt = payload.format.extension().to_uppercase();
-        let title = format!("Готово · файлов: {}", payload.succeeded);
-        let body = format!("Сохранено в {fmt} за {sec} с");
+        let (title, body) = if is_ru {
+            (
+                format!("Готово · файлов: {}", payload.succeeded),
+                format!("Сохранено в {fmt} за {sec} с"),
+            )
+        } else {
+            (
+                format!("Done · files: {}", payload.succeeded),
+                format!("Saved as {fmt} in {sec} s"),
+            )
+        };
         (title, body, 3500, Urgency::Normal)
     };
 
@@ -106,6 +129,7 @@ fn main() {
             elapsed_ms: summary.elapsed.as_millis() as u64,
             format: config.format,
             theme: config.theme,
+            language: config.resolved_language(),
             log_path: summary.log_path.map(|p| p.display().to_string()),
         };
         show_toast(&payload);

@@ -129,8 +129,8 @@ html, body {
       <div class="sub" id="sub"></div>
     </div>
     <div class="actions">
-      <button class="btn-log" id="btn-log" hidden>Лог</button>
-      <button class="btn-close" id="btn-close" title="Закрыть">
+      <button class="btn-log" id="btn-log" hidden></button>
+      <button class="btn-close" id="btn-close">
         <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
@@ -139,9 +139,33 @@ html, body {
 
 <script>
 const DATA = __TOAST_DATA__;
+const lang = DATA.language === "ru" ? "ru" : "en";
+document.documentElement.lang = lang;
+
 if (DATA.theme && DATA.theme !== "system") {
   document.documentElement.dataset.theme = DATA.theme;
 }
+
+const T = {
+  ru: {
+    log: "Лог",
+    close: "Закрыть",
+    doneWithErrors: "Готово с ошибками",
+    failedTitle: "Ошибка обработки",
+    errSub: (ok, fail, sec) => `Успешно: ${ok} · Ошибок: ${fail} (${sec} с)`,
+    doneTitle: (n) => `Готово · файлов: ${n}`,
+    doneSub: (fmt, sec) => `Сохранено в ${fmt} за ${sec} с`
+  },
+  en: {
+    log: "Log",
+    close: "Close",
+    doneWithErrors: "Done with errors",
+    failedTitle: "Processing failed",
+    errSub: (ok, fail, sec) => `Succeeded: ${ok} · Failed: ${fail} (${sec} s)`,
+    doneTitle: (n) => `Done · files: ${n}`,
+    doneSub: (fmt, sec) => `Saved as ${fmt} in ${sec} s`
+  }
+}[lang];
 
 const card = document.getElementById("card");
 const badge = document.getElementById("badge");
@@ -150,6 +174,9 @@ const sub = document.getElementById("sub");
 const btnLog = document.getElementById("btn-log");
 const btnClose = document.getElementById("btn-close");
 
+btnLog.textContent = T.log;
+btnClose.title = T.close;
+
 const hasErrors = DATA.failed > 0;
 const sec = (DATA.elapsed_ms / 1000).toFixed(DATA.elapsed_ms < 1000 ? 2 : 1);
 const fmt = String(DATA.format || "jpg").toUpperCase();
@@ -157,8 +184,8 @@ const fmt = String(DATA.format || "jpg").toUpperCase();
 if (hasErrors) {
   badge.classList.add("warn");
   badge.innerHTML = '<svg viewBox="0 0 24 24"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>';
-  title.textContent = DATA.succeeded > 0 ? "Готово с ошибками" : "Ошибка обработки";
-  sub.textContent = `Успешно: ${DATA.succeeded} · Ошибок: ${DATA.failed} (${sec} с)`;
+  title.textContent = DATA.succeeded > 0 ? T.doneWithErrors : T.failedTitle;
+  sub.textContent = T.errSub(DATA.succeeded, DATA.failed, sec);
   if (DATA.log_path) {
     btnLog.hidden = false;
     btnLog.addEventListener("click", () => {
@@ -167,8 +194,8 @@ if (hasErrors) {
   }
 } else {
   badge.innerHTML = '<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>';
-  title.textContent = `Готово · файлов: ${DATA.succeeded}`;
-  sub.textContent = `Сохранено в ${fmt} за ${sec} с`;
+  title.textContent = T.doneTitle(DATA.succeeded);
+  sub.textContent = T.doneSub(fmt, sec);
 }
 
 let timer = null;

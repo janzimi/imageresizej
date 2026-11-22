@@ -5,6 +5,7 @@ Actions=resize;
 X-KDE-Priority=TopLevel
 
 [Desktop Action resize]
-Name=Сжать с ImageResizerJ
+Name=Compress with ImageResizerJ
+Name[ru]=Сжать с ImageResizerJ
 Icon=imageresizej
 Exec=/usr/bin/resizer-worker %F

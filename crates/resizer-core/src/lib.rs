@@ -19,7 +19,9 @@ use libheif_rs::{ColorSpace, HeifContext, LibHeif, RgbChroma};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
-pub use config::{AppConfig, OutputFormat, ThemeMode};
+pub use config::{
+    AppConfig, LanguageMode, OutputFormat, ResolvedLanguage, ThemeMode, detect_system_language,
+};
 
 static TEMP_FILE_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
@@ -40,7 +42,16 @@ pub struct ToastPayload {
     pub elapsed_ms: u64,
     pub format: OutputFormat,
     pub theme: ThemeMode,
+    #[serde(default = "detect_system_language")]
+    pub language: ResolvedLanguage,
     pub log_path: Option<String>,
+}
+
+fn tr(lang: ResolvedLanguage, ru: &'static str, en: &'static str) -> &'static str {
+    match lang {
+        ResolvedLanguage::Ru => ru,
+        ResolvedLanguage::En => en,
+    }
 }
 
 fn normalize_key(path: &Path) -> String {
@@ -66,7 +77,6 @@ fn reserve_output_path(
 ) -> PathBuf {
     let ext = config.format.extension();
 
-    // Перезаписываем на месте только если включено удаление оригиналов и расширение уже совпадает
     if config.delete_originals && is_same_extension(file_path, ext) {
         return file_path.to_path_buf();
     }
@@ -104,7 +114,7 @@ fn open_standard_image(file_path: &Path) -> Result<DynamicImage, Box<dyn Error>>
     Ok(img)
 }
 
-fn open_heic_image(file_path: &Path) -> Result<DynamicImage, Box<dyn Error>> {
+fn open_heic_image(file_path: &Path, lang: ResolvedLanguage) -> Result<DynamicImage, Box<dyn Error>> {
     let bytes = fs::read(file_path)?;
     let ctx = HeifContext::read_from_bytes(&bytes)?;
     let handle = ctx.primary_image_handle()?;
@@ -120,52 +130,66 @@ fn open_heic_image(file_path: &Path) -> Result<DynamicImage, Box<dyn Error>> {
     let heif_img = lib_heif.decode(&handle, ColorSpace::Rgb(chroma), None)?;
 
     let planes = heif_img.planes();
-    let interleaved = planes
-        .interleaved
-        .ok_or("Не удалось получить пиксельные данные из HEIC/AVIF")?;
+    let interleaved = planes.interleaved.ok_or(tr(
+        lang,
+        "Не удалось получить пиксельные данные из HEIC/AVIF",
+        "Failed to get pixel data from HEIC/AVIF",
+    ))?;
 
     let width = interleaved.width;
     let height = interleaved.height;
     let stride = interleaved.stride;
     let data = interleaved.data;
 
-    let row_bytes = (width as usize)
-        .checked_mul(channels)
-        .ok_or("Переполнение размера строки изображения")?;
-    let total_bytes = row_bytes
-        .checked_mul(height as usize)
-        .ok_or("Переполнение размера буфера изображения")?;
+    let row_bytes = (width as usize).checked_mul(channels).ok_or(tr(
+        lang,
+        "Переполнение размера строки изображения",
+        "Image row size overflow",
+    ))?;
+    let total_bytes = row_bytes.checked_mul(height as usize).ok_or(tr(
+        lang,
+        "Переполнение размера буфера изображения",
+        "Image buffer size overflow",
+    ))?;
 
     let mut buf = Vec::with_capacity(total_bytes);
     for y in 0..(height as usize) {
         let start = y * stride;
-        let row = data
-            .get(start..start + row_bytes)
-            .ok_or("Некорректный размер буфера HEIC/AVIF")?;
+        let row = data.get(start..start + row_bytes).ok_or(tr(
+            lang,
+            "Некорректный размер буфера HEIC/AVIF",
+            "Invalid HEIC/AVIF buffer size",
+        ))?;
         buf.extend_from_slice(row);
     }
 
     if has_alpha {
-        let rgba_img = RgbaImage::from_raw(width, height, buf)
-            .ok_or("Не удалось собрать RGBA-изображение из буфера HEIC/AVIF")?;
+        let rgba_img = RgbaImage::from_raw(width, height, buf).ok_or(tr(
+            lang,
+            "Не удалось собрать RGBA-изображение из буфера HEIC/AVIF",
+            "Failed to build RGBA image from HEIC/AVIF buffer",
+        ))?;
         Ok(DynamicImage::ImageRgba8(rgba_img))
     } else {
-        let rgb_img = RgbImage::from_raw(width, height, buf)
-            .ok_or("Не удалось собрать RGB-изображение из буфера HEIC/AVIF")?;
+        let rgb_img = RgbImage::from_raw(width, height, buf).ok_or(tr(
+            lang,
+            "Не удалось собрать RGB-изображение из буфера HEIC/AVIF",
+            "Failed to build RGB image from HEIC/AVIF buffer",
+        ))?;
         Ok(DynamicImage::ImageRgb8(rgb_img))
     }
 }
 
-fn open_any_image(file_path: &Path) -> Result<DynamicImage, Box<dyn Error>> {
+fn open_any_image(file_path: &Path, lang: ResolvedLanguage) -> Result<DynamicImage, Box<dyn Error>> {
     match open_standard_image(file_path) {
         Ok(img) => Ok(img),
-        Err(std_err) => open_heic_image(file_path).map_err(|heic_err| {
-            format!("Не удалось открыть файл ({std_err}; HEIC: {heic_err})").into()
+        Err(std_err) => open_heic_image(file_path, lang).map_err(|heic_err| {
+            let prefix = tr(lang, "Не удалось открыть файл", "Failed to open file");
+            format!("{prefix} ({std_err}; HEIC: {heic_err})").into()
         }),
     }
 }
 
-/// Накладывает прозрачное изображение на белый фон (только для JPEG)
 fn flatten_to_rgb_white(img: &DynamicImage) -> RgbImage {
     if !img.color().has_alpha() {
         return img.to_rgb8();
@@ -230,7 +254,6 @@ fn encode_image_to_path(
         OutputFormat::Avif => {
             let file = File::create(path)?;
             let mut writer = BufWriter::new(file);
-            // speed = 6: оптимальный баланс скорости и степени сжатия
             let encoder = AvifEncoder::new_with_speed_quality(&mut writer, 6, quality);
             if has_alpha {
                 img.to_rgba8().write_with_encoder(encoder)?;
@@ -244,8 +267,6 @@ fn encode_image_to_path(
     Ok(())
 }
 
-/// Сохраняет изображение через временный файл в той же папке и атомарно заменяет цель,
-/// чтобы при сбое записи оригинал не был повреждён.
 fn save_image_atomic(
     img: &DynamicImage,
     target_path: &Path,
@@ -271,18 +292,19 @@ fn save_image_atomic(
 fn process_single(
     file_path: &Path,
     config: &AppConfig,
+    lang: ResolvedLanguage,
     reserved: &Mutex<HashSet<String>>,
 ) -> Result<PathBuf, Box<dyn Error>> {
     if !file_path.is_file() {
-        return Err("Файл не найден".into());
+        return Err(tr(lang, "Файл не найден", "File not found").into());
     }
 
-    let img = open_any_image(file_path)?;
+    let img = open_any_image(file_path, lang)?;
 
     let w = img.width();
     let h = img.height();
     if w == 0 || h == 0 {
-        return Err("Изображение имеет нулевой размер".into());
+        return Err(tr(lang, "Изображение имеет нулевой размер", "Image has zero dimensions").into());
     }
 
     let target_w = config.target_width.max(1);
@@ -303,14 +325,15 @@ fn process_single(
     Ok(new_path)
 }
 
-fn append_error_log(file_path: &Path, err_msg: &str) -> Option<PathBuf> {
+fn append_error_log(file_path: &Path, err_msg: &str, lang: ResolvedLanguage) -> Option<PathBuf> {
     let mut candidates = Vec::with_capacity(2);
     if let Some(parent) = file_path.parent() {
         candidates.push(parent.join("log.txt"));
     }
     candidates.push(AppConfig::webview_data_dir("logs").join("log.txt"));
 
-    let line = format!("Ошибка с файлом {}: {}", file_path.display(), err_msg);
+    let prefix = tr(lang, "Ошибка с файлом", "Error with file");
+    let line = format!("{prefix} {}: {err_msg}", file_path.display());
     for log_path in candidates {
         if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(&log_path)
             && writeln!(file, "{line}").is_ok()
@@ -322,11 +345,10 @@ fn append_error_log(file_path: &Path, err_msg: &str) -> Option<PathBuf> {
     None
 }
 
-/// Многопоточно обрабатывает список файлов согласно настройкам
 pub fn process_batch(paths: &[PathBuf], config: &AppConfig) -> BatchSummary {
     let start = Instant::now();
+    let lang = config.resolved_language();
 
-    // Убираем дубликаты путей, чтобы два потока не перезаписывали один файл одновременно
     let mut seen = HashSet::with_capacity(paths.len());
     let unique_paths: Vec<&PathBuf> = paths
         .iter()
@@ -347,7 +369,8 @@ pub fn process_batch(paths: &[PathBuf], config: &AppConfig) -> BatchSummary {
     let results: Vec<Result<PathBuf, (&Path, String)>> = unique_paths
         .par_iter()
         .map(|path| {
-            process_single(path, config, &reserved).map_err(|e| (path.as_path(), e.to_string()))
+            process_single(path, config, lang, &reserved)
+                .map_err(|e| (path.as_path(), e.to_string()))
         })
         .collect();
 
@@ -359,7 +382,7 @@ pub fn process_batch(paths: &[PathBuf], config: &AppConfig) -> BatchSummary {
         match res {
             Ok(_) => succeeded += 1,
             Err((path, err_msg)) => {
-                let written = append_error_log(path, &err_msg);
+                let written = append_error_log(path, &err_msg, lang);
                 if log_path.is_none() {
                     log_path = written;
                 }

@@ -33,6 +33,63 @@ pub enum ThemeMode {
     Dark,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum LanguageMode {
+    #[default]
+    Auto,
+    Ru,
+    En,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ResolvedLanguage {
+    Ru,
+    En,
+}
+
+#[cfg(windows)]
+pub fn detect_system_language() -> ResolvedLanguage {
+    #[link(name = "kernel32")]
+    unsafe extern "system" {
+        fn GetUserDefaultUILanguage() -> u16;
+    }
+
+    let lang_id = unsafe { GetUserDefaultUILanguage() };
+    if (lang_id & 0x03FF) == 0x19 {
+        ResolvedLanguage::Ru
+    } else {
+        ResolvedLanguage::En
+    }
+}
+
+#[cfg(not(windows))]
+pub fn detect_system_language() -> ResolvedLanguage {
+    for key in ["LC_ALL", "LC_MESSAGES", "LANG"] {
+        if let Ok(val) = std::env::var(key)
+            && !val.is_empty()
+        {
+            return if val.to_ascii_lowercase().starts_with("ru") {
+                ResolvedLanguage::Ru
+            } else {
+                ResolvedLanguage::En
+            };
+        }
+    }
+    ResolvedLanguage::En
+}
+
+impl LanguageMode {
+    pub fn resolve(self) -> ResolvedLanguage {
+        match self {
+            LanguageMode::Auto => detect_system_language(),
+            LanguageMode::Ru => ResolvedLanguage::Ru,
+            LanguageMode::En => ResolvedLanguage::En,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct AppConfig {
@@ -42,6 +99,7 @@ pub struct AppConfig {
     pub quality: u8,
     pub delete_originals: bool,
     pub theme: ThemeMode,
+    pub language: LanguageMode,
     pub show_notifications: bool,
 }
 
@@ -54,15 +112,17 @@ impl Default for AppConfig {
             quality: 90,
             delete_originals: true,
             theme: ThemeMode::System,
+            language: LanguageMode::Auto,
             show_notifications: true,
         }
     }
 }
 
 impl AppConfig {
-    /// Возвращает стандартный путь к config.json для текущей ОС:
-    /// Windows: %APPDATA%\ImageResizerJ\config\config.json
-    /// Linux:   ~/.config/imageresizerJ/config.json
+    pub fn resolved_language(&self) -> ResolvedLanguage {
+        self.language.resolve()
+    }
+
     pub fn config_path() -> PathBuf {
         if let Some(dirs) = ProjectDirs::from("", "", "ImageResizerJ") {
             dirs.config_dir().join("config.json")
@@ -71,9 +131,6 @@ impl AppConfig {
         }
     }
 
-    /// Возвращает папку с правами на запись для кэша WebView2 / WebKitGTK:
-    /// Windows: %LOCALAPPDATA%\ImageResizerJ\data\<subdir>
-    /// Linux:   ~/.local/share/imageresizerj/<subdir>
     pub fn webview_data_dir(subdir: &str) -> PathBuf {
         let base = if let Some(dirs) = ProjectDirs::from("", "", "ImageResizerJ") {
             dirs.data_local_dir().to_path_buf()
@@ -85,7 +142,6 @@ impl AppConfig {
         dir
     }
 
-    /// Загружает настройки или создаёт файл с параметрами по умолчанию
     pub fn load_or_create() -> Self {
         let path = Self::config_path();
         if let Ok(text) = fs::read_to_string(&path)
@@ -99,7 +155,6 @@ impl AppConfig {
         default_cfg
     }
 
-    /// Сохраняет настройки в форматированный JSON
     pub fn save(&self) -> io::Result<()> {
         let path = Self::config_path();
         if let Some(parent) = path.parent() {

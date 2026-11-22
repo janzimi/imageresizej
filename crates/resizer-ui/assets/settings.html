@@ -124,7 +124,6 @@ html, body {
   transition: background-color 0.25s ease, border-color 0.25s ease;
 }
 
-/* ── Шапка окна (перетаскиваемая) ─────────────────────── */
 .titlebar {
   flex-shrink: 0;
   height: 46px;
@@ -176,7 +175,6 @@ html, body {
   stroke: currentColor; stroke-width: 2; stroke-linecap: round;
 }
 
-/* ── Контент ──────────────────────────────────────────── */
 .window-body {
   flex: 1;
   min-height: 0;
@@ -219,11 +217,14 @@ html, body {
 .row-value { font-size: 13px; color: var(--text-3); font-variant-numeric: tabular-nums; }
 .row-disabled { opacity: 0.42; pointer-events: none; }
 
-/* Сегментированный контроль */
 .segmented {
   position: relative; display: flex; width: 100%;
   padding: 2px; border-radius: 9px; background: var(--control);
   transition: background-color 0.25s ease;
+}
+.segmented-compact {
+  width: 176px;
+  flex-shrink: 0;
 }
 .segmented button {
   position: relative; z-index: 1; flex: 1;
@@ -242,7 +243,6 @@ html, body {
 }
 .segmented-3 .segmented-thumb { width: calc((100% - 4px) / 3); }
 
-/* Stepper */
 .stepper {
   display: flex; align-items: center;
   padding: 2px; border-radius: 9px; background: var(--control);
@@ -266,7 +266,6 @@ html, body {
 #width-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .step-unit { font-size: 11.5px; color: var(--text-2); }
 
-/* Слайдер качества */
 input[type="range"] {
   -webkit-appearance: none; appearance: none; width: 100%; height: 4px;
   border-radius: 2px; outline: none; cursor: pointer;
@@ -281,7 +280,6 @@ input[type="range"]::-webkit-slider-thumb {
 }
 input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.14); }
 
-/* Тумблер iOS */
 .switch { position: relative; display: inline-block; flex-shrink: 0; cursor: pointer; }
 .switch input { position: absolute; opacity: 0; pointer-events: none; }
 .switch .track {
@@ -298,7 +296,6 @@ input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.14); }
 .switch input:checked + .track { background: var(--green); }
 .switch input:checked + .track .thumb { transform: translateX(18px); }
 
-/* Подвал и плашка автосохранения */
 .footnote {
   margin: 12px 4px 0; text-align: center; font-size: 11px; color: var(--text-3);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -337,14 +334,14 @@ input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.14); }
         </div>
         <div class="title-text">
           <span class="title-name">ImageResizerJ</span>
-          <span class="title-sub">Настройки</span>
+          <span class="title-sub" data-i18n="settings"></span>
         </div>
       </div>
       <div class="win-actions">
-        <button type="button" class="btn-win" id="btn-min" title="Свернуть">
+        <button type="button" class="btn-win" id="btn-min" data-i18n-title="minimize">
           <svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12" /></svg>
         </button>
-        <button type="button" class="btn-win close" id="btn-close" title="Закрыть">
+        <button type="button" class="btn-win close" id="btn-close" data-i18n-title="close">
           <svg viewBox="0 0 24 24"><line x1="6" y1="6" x2="18" y2="18" /><line x1="18" y1="6" x2="6" y2="18" /></svg>
         </button>
       </div>
@@ -353,12 +350,12 @@ input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.14); }
     <main class="window-body" id="window-body">
       <div class="content-inner" id="content-inner">
       <section class="group">
-        <h2 class="group-title">Формат и качество</h2>
+        <h2 class="group-title" data-i18n="groupFormat"></h2>
         <div class="card">
           <div class="row row-stack">
             <div class="row-head">
-              <span class="row-title">Формат сохранения</span>
-              <span class="row-caption" id="format-hint">Максимальная совместимость</span>
+              <span class="row-title" data-i18n="outputFormat"></span>
+              <span class="row-caption" id="format-hint"></span>
             </div>
             <div class="segmented" id="format-seg" role="radiogroup">
               <div class="segmented-thumb" id="format-thumb"></div>
@@ -371,7 +368,7 @@ input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.14); }
 
           <div class="row row-stack" id="quality-row">
             <div class="row-head">
-              <span class="row-title">Качество сжатия</span>
+              <span class="row-title" data-i18n="quality"></span>
               <span class="row-value" id="quality-val">90%</span>
             </div>
             <input type="range" id="quality-range" min="50" max="100" step="1" value="90" />
@@ -380,12 +377,12 @@ input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.14); }
       </section>
 
       <section class="group">
-        <h2 class="group-title">Размер и файлы</h2>
+        <h2 class="group-title" data-i18n="groupSize"></h2>
         <div class="card">
           <div class="row">
             <div class="row-text">
-              <span class="row-title">Ширина изображения</span>
-              <span class="row-caption">Высота подбирается пропорционально</span>
+              <span class="row-title" data-i18n="widthTitle"></span>
+              <span class="row-caption" data-i18n="widthCaption"></span>
             </div>
             <div class="stepper">
               <button type="button" class="step-btn" id="w-minus">−</button>
@@ -399,8 +396,8 @@ input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.14); }
 
           <div class="row">
             <div class="row-text">
-              <span class="row-title">Не увеличивать маленькие</span>
-              <span class="row-caption">Пропускать ресайз, если фото уже́ заданной ширины</span>
+              <span class="row-title" data-i18n="noUpscaleTitle"></span>
+              <span class="row-caption" data-i18n="noUpscaleCaption"></span>
             </div>
             <label class="switch">
               <input type="checkbox" id="no-upscale" />
@@ -410,8 +407,8 @@ input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.14); }
 
           <div class="row">
             <div class="row-text">
-              <span class="row-title">Удалять оригиналы</span>
-              <span class="row-caption">Если выключено — сохраняется копия рядом</span>
+              <span class="row-title" data-i18n="deleteOrigTitle"></span>
+              <span class="row-caption" data-i18n="deleteOrigCaption"></span>
             </div>
             <label class="switch">
               <input type="checkbox" id="delete-originals" />
@@ -422,12 +419,12 @@ input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.14); }
       </section>
 
       <section class="group">
-        <h2 class="group-title">Интерфейс</h2>
+        <h2 class="group-title" data-i18n="groupInterface"></h2>
         <div class="card">
           <div class="row">
             <div class="row-text">
-              <span class="row-title">Уведомления о завершении</span>
-              <span class="row-caption">Всплывающая карточка в правом нижнем углу</span>
+              <span class="row-title" data-i18n="notifTitle"></span>
+              <span class="row-caption" data-i18n="notifCaption"></span>
             </div>
             <label class="switch">
               <input type="checkbox" id="show-notifications" />
@@ -435,15 +432,25 @@ input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.14); }
             </label>
           </div>
 
+          <div class="row">
+            <span class="row-title" data-i18n="languageTitle"></span>
+            <div class="segmented segmented-3 segmented-compact" id="lang-seg" role="radiogroup">
+              <div class="segmented-thumb" id="lang-thumb"></div>
+              <button type="button" data-val="auto" data-i18n="auto"></button>
+              <button type="button" data-val="ru">RU</button>
+              <button type="button" data-val="en">EN</button>
+            </div>
+          </div>
+
           <div class="row row-stack">
             <div class="row-head">
-              <span class="row-title">Тема оформления</span>
+              <span class="row-title" data-i18n="themeTitle"></span>
             </div>
             <div class="segmented segmented-3" id="theme-seg" role="radiogroup">
               <div class="segmented-thumb" id="theme-thumb"></div>
-              <button type="button" data-val="system">Авто</button>
-              <button type="button" data-val="light">Светлая</button>
-              <button type="button" data-val="dark">Тёмная</button>
+              <button type="button" data-val="system" data-i18n="auto"></button>
+              <button type="button" data-val="light" data-i18n="themeLight"></button>
+              <button type="button" data-val="dark" data-i18n="themeDark"></button>
             </div>
           </div>
         </div>
@@ -455,7 +462,7 @@ input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.14); }
 
     <div class="autosave-toast" id="toast">
       <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
-      <span>Сохранено</span>
+      <span data-i18n="saved"></span>
     </div>
   </div>
 </div>
@@ -463,19 +470,78 @@ input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.14); }
 <script>
 const STATE = __INITIAL_STATE__;
 const config = STATE.config;
+if (!config.language) config.language = "auto";
 
-const HINTS = {
-  jpg:  "Максимальная совместимость",
-  png:  "Без потерь, сохраняет прозрачность",
-  webp: "Быстро и компактно, с прозрачностью",
-  avif: "Минимальный размер, медленнее"
+const I18N = {
+  ru: {
+    settings: "Настройки",
+    minimize: "Свернуть",
+    close: "Закрыть",
+    groupFormat: "Формат и качество",
+    outputFormat: "Формат сохранения",
+    quality: "Качество сжатия",
+    groupSize: "Размер и файлы",
+    widthTitle: "Ширина изображения",
+    widthCaption: "Высота подбирается пропорционально",
+    noUpscaleTitle: "Не увеличивать маленькие",
+    noUpscaleCaption: "Пропускать ресайз, если фото уже́ заданной ширины",
+    deleteOrigTitle: "Удалять оригиналы",
+    deleteOrigCaption: "Если выключено — сохраняется копия рядом",
+    groupInterface: "Интерфейс",
+    notifTitle: "Уведомления о завершении",
+    notifCaption: "Всплывающая карточка в правом нижнем углу",
+    languageTitle: "Язык интерфейса",
+    themeTitle: "Тема оформления",
+    auto: "Авто",
+    themeLight: "Светлая",
+    themeDark: "Тёмная",
+    saved: "Сохранено",
+    hints: {
+      jpg:  "Максимальная совместимость",
+      png:  "Без потерь, сохраняет прозрачность",
+      webp: "Быстро и компактно, с прозрачностью",
+      avif: "Минимальный размер, медленнее"
+    }
+  },
+  en: {
+    settings: "Settings",
+    minimize: "Minimize",
+    close: "Close",
+    groupFormat: "Format & Quality",
+    outputFormat: "Output format",
+    quality: "Compression quality",
+    groupSize: "Size & Files",
+    widthTitle: "Image width",
+    widthCaption: "Height scales proportionally",
+    noUpscaleTitle: "Don't upscale smaller",
+    noUpscaleCaption: "Skip resize if image is narrower than target",
+    deleteOrigTitle: "Delete originals",
+    deleteOrigCaption: "When off, saves a copy alongside",
+    groupInterface: "Interface",
+    notifTitle: "Completion notifications",
+    notifCaption: "Popup card in the bottom-right corner",
+    languageTitle: "Language",
+    themeTitle: "Appearance",
+    auto: "Auto",
+    themeLight: "Light",
+    themeDark: "Dark",
+    saved: "Saved",
+    hints: {
+      jpg:  "Maximum compatibility",
+      png:  "Lossless, preserves transparency",
+      webp: "Fast & compact, with transparency",
+      avif: "Smallest size, slower encoding"
+    }
+  }
 };
 
 const titlebar = document.getElementById("titlebar");
-const winBody = document.getElementById("window-body");
+const contentInner = document.getElementById("content-inner");
 const formatButtons = [...document.querySelectorAll("#format-seg button")];
+const langButtons = [...document.querySelectorAll("#lang-seg button")];
 const themeButtons = [...document.querySelectorAll("#theme-seg button")];
 const formatThumb = document.getElementById("format-thumb");
+const langThumb = document.getElementById("lang-thumb");
 const themeThumb = document.getElementById("theme-thumb");
 const formatHint = document.getElementById("format-hint");
 const qualityRow = document.getElementById("quality-row");
@@ -491,7 +557,28 @@ const cfgEl = document.getElementById("config-path");
 cfgEl.textContent = STATE.config_path;
 cfgEl.title = STATE.config_path;
 
-// Управление безрамочным окном
+let readySent = false;
+let lastHeight = 0;
+
+function resolvedLang() {
+  const raw = config.language === "auto" ? STATE.system_language : config.language;
+  return raw === "ru" ? "ru" : "en";
+}
+
+function measureHeight() {
+  // 28px (.app-wrap padding) + 2px (.window-shell border) + 30px (.window-body padding) = 60px
+  return Math.ceil(titlebar.offsetHeight + contentInner.offsetHeight + 60);
+}
+
+function syncHeight() {
+  if (!readySent) return;
+  const h = measureHeight();
+  if (h !== lastHeight) {
+    lastHeight = h;
+    window.ipc.postMessage(JSON.stringify({ type: "resize", height: h }));
+  }
+}
+
 titlebar.addEventListener("mousedown", (e) => {
   if (e.button === 0 && !e.target.closest("button")) {
     window.ipc.postMessage(JSON.stringify({ type: "drag" }));
@@ -537,12 +624,33 @@ function updateQualitySlider() {
   qualityVal.textContent = config.quality + "%";
 }
 
+function applyTranslations() {
+  const lang = resolvedLang();
+  const t = I18N[lang];
+  document.documentElement.lang = lang;
+
+  document.querySelectorAll("[data-i18n]").forEach((el) => {
+    const key = el.dataset.i18n;
+    if (key in t) el.textContent = t[key];
+  });
+  document.querySelectorAll("[data-i18n-title]").forEach((el) => {
+    const key = el.dataset.i18nTitle;
+    if (key in t) el.title = t[key];
+  });
+  formatHint.textContent = t.hints[config.format] || "";
+}
+
 function applyUI() {
+  applyTranslations();
+
   const fIdx = Math.max(0, formatButtons.findIndex(b => b.dataset.val === config.format));
   formatButtons.forEach((b, i) => b.setAttribute("aria-checked", i === fIdx ? "true" : "false"));
   formatThumb.style.transform = `translateX(${fIdx * 100}%)`;
-  formatHint.textContent = HINTS[config.format] || "";
   qualityRow.classList.toggle("row-disabled", config.format === "png");
+
+  const lIdx = Math.max(0, langButtons.findIndex(b => b.dataset.val === config.language));
+  langButtons.forEach((b, i) => b.setAttribute("aria-checked", i === lIdx ? "true" : "false"));
+  langThumb.style.transform = `translateX(${lIdx * 100}%)`;
 
   const tIdx = Math.max(0, themeButtons.findIndex(b => b.dataset.val === config.theme));
   themeButtons.forEach((b, i) => b.setAttribute("aria-checked", i === tIdx ? "true" : "false"));
@@ -564,6 +672,14 @@ formatButtons.forEach(btn => btn.addEventListener("click", () => {
   config.format = btn.dataset.val;
   applyUI();
   saveConfig();
+  syncHeight();
+}));
+
+langButtons.forEach(btn => btn.addEventListener("click", () => {
+  config.language = btn.dataset.val;
+  applyUI();
+  saveConfig();
+  syncHeight();
 }));
 
 themeButtons.forEach(btn => btn.addEventListener("click", () => {
@@ -593,12 +709,10 @@ showNotif.addEventListener("change", () => { config.show_notifications = showNot
 
 applyUI();
 
-// Вычисляем реальную высоту всего контента и даём команду Rust показать окно
-const contentInner = document.getElementById("content-inner");
 setTimeout(() => {
-  // 28px (.app-wrap padding) + 2px (.window-shell border) + 30px (.window-body padding) = 60px
-  const totalHeight = Math.ceil(titlebar.offsetHeight + contentInner.offsetHeight + 60);
-  window.ipc.postMessage(JSON.stringify({ type: "ready", height: totalHeight }));
+  lastHeight = measureHeight();
+  readySent = true;
+  window.ipc.postMessage(JSON.stringify({ type: "ready", height: lastHeight }));
 }, 0);
 </script>
 </body>

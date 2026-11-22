@@ -6,7 +6,7 @@ use std::io::Write;
 use std::process::Command;
 use std::time::Duration;
 
-use resizer_core::{AppConfig, ToastPayload};
+use resizer_core::{AppConfig, ResolvedLanguage, ToastPayload, detect_system_language};
 use serde::{Deserialize, Serialize};
 use tao::dpi::{LogicalSize, PhysicalPosition};
 use tao::event::{Event, WindowEvent};
@@ -18,8 +18,7 @@ const SETTINGS_HTML: &str = include_str!("../assets/settings.html");
 const TOAST_HTML: &str = include_str!("../assets/toast.html");
 const APP_ICON_BYTES: &[u8] = include_bytes!("../../../assets/icon.ico");
 
-/// Гарантирует правильный порядок освобождения ресурсов (сверху вниз):
-/// сначала WebView, затем нативное окно, и только потом WebContext.
+// Порядок полей критичен для drop: WebView -> Window -> WebContext
 struct ManagedWebView {
     _webview: WebView,
     window: Window,
@@ -30,12 +29,14 @@ struct ManagedWebView {
 struct SettingsState {
     config: AppConfig,
     config_path: String,
+    system_language: ResolvedLanguage,
 }
 
 #[derive(Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 enum IpcMessage {
     Ready { height: f64 },
+    Resize { height: f64 },
     Save { config: AppConfig },
     Drag,
     Minimize,
@@ -45,6 +46,7 @@ enum IpcMessage {
 
 enum UserEvent {
     Ready(f64),
+    Resize(f64),
     Drag,
     Minimize,
     Close,
@@ -94,10 +96,20 @@ fn build_webview(builder: WebViewBuilder<'_>, window: &Window) -> Option<WebView
     match res {
         Ok(wv) => Some(wv),
         Err(e) => {
-            log_ui_error(&format!("Ошибка инициализации WebView: {e}"));
+            log_ui_error(&format!("WebView init error: {e}"));
             None
         }
     }
+}
+
+fn clamp_window_height(window: &Window, content_h: f64) -> f64 {
+    let mut win_h = content_h.ceil().clamp(320.0, 920.0);
+    if let Some(monitor) = window.primary_monitor() {
+        let scale = monitor.scale_factor();
+        let screen_h = monitor.size().height as f64 / scale;
+        win_h = win_h.min((screen_h - 56.0).max(320.0));
+    }
+    win_h
 }
 
 fn run_settings() {
@@ -105,6 +117,7 @@ fn run_settings() {
     let state = SettingsState {
         config,
         config_path: AppConfig::config_path().display().to_string(),
+        system_language: detect_system_language(),
     };
     let json = escape_inline_json(&serde_json::to_string(&state).unwrap());
     let html = SETTINGS_HTML.replace("__INITIAL_STATE__", &json);
@@ -130,7 +143,7 @@ fn run_settings() {
         wb = wb.with_undecorated_shadow(false);
     }
 
-    let window = wb.build(&event_loop).expect("Не удалось создать окно");
+    let window = wb.build(&event_loop).expect("Failed to create window");
 
     let mut web_context = WebContext::new(Some(AppConfig::webview_data_dir("webview")));
     let ipc_proxy = proxy.clone();
@@ -143,6 +156,9 @@ fn run_settings() {
                 match msg {
                     IpcMessage::Ready { height } => {
                         let _ = ipc_proxy.send_event(UserEvent::Ready(height));
+                    }
+                    IpcMessage::Resize { height } => {
+                        let _ = ipc_proxy.send_event(UserEvent::Resize(height));
                     }
                     IpcMessage::Save { config } => {
                         let _ = config.save();
@@ -173,7 +189,7 @@ fn run_settings() {
 
     std::thread::spawn(move || {
         std::thread::sleep(Duration::from_millis(1500));
-        let _ = proxy.send_event(UserEvent::Ready(620.0));
+        let _ = proxy.send_event(UserEvent::Ready(670.0));
     });
 
     let mut is_shown = false;
@@ -184,14 +200,12 @@ fn run_settings() {
         match event {
             Event::UserEvent(UserEvent::Ready(content_h)) if !is_shown => {
                 is_shown = true;
-                let mut win_h = content_h.ceil().clamp(320.0, 920.0);
+                let win_h = clamp_window_height(&managed.window, content_h);
 
                 if let Some(monitor) = managed.window.primary_monitor() {
                     let scale = monitor.scale_factor();
                     let mon_pos = monitor.position();
                     let mon_size = monitor.size();
-                    let screen_h = mon_size.height as f64 / scale;
-                    win_h = win_h.min((screen_h - 56.0).max(320.0));
 
                     let win_w_phys = (win_w * scale).round() as i32;
                     let win_h_phys = (win_h * scale).round() as i32;
@@ -212,6 +226,12 @@ fn run_settings() {
 
                 managed.window.set_visible(true);
                 managed.window.set_focus();
+            }
+            Event::UserEvent(UserEvent::Resize(content_h)) if is_shown => {
+                let win_h = clamp_window_height(&managed.window, content_h);
+                managed
+                    .window
+                    .set_inner_size(LogicalSize::new(win_w, win_h));
             }
             Event::UserEvent(UserEvent::Drag) => {
                 let _ = managed.window.drag_window();
@@ -264,7 +284,7 @@ fn run_toast(payload_json: &str) {
 
     let window = wb
         .build(&event_loop)
-        .expect("Не удалось создать окно тоста");
+        .expect("Failed to create toast window");
 
     if let Some(monitor) = window.primary_monitor() {
         let scale = monitor.scale_factor();

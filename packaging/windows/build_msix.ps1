@@ -8,12 +8,9 @@ $StageDir = Join-Path $TargetDir "stage"
 
 $SparseDir = "$PSScriptRoot\sparse"
 $AssetsDir = "$SparseDir\Assets"
-$CertDir = "$PSScriptRoot\cert"
-$CerPath = "$CertDir\ImageResizerJ.cer"
 $PfxPath = if ($env:IMAGERESIZEJ_PFX) { $env:IMAGERESIZEJ_PFX } else { "C:\Keys\ImageResizerJ.pfx" }
 $MsixPath = "$StageDir\ImageResizerJ.msix"
 
-# 1. Find Windows SDK tools (makeappx.exe and signtool.exe)
 $SdkBins = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin\*\x64\makeappx.exe" -ErrorAction SilentlyContinue |
     Sort-Object FullName -Descending
 if (-not $SdkBins) {
@@ -24,14 +21,12 @@ $MakeAppx = Join-Path $SdkDir "makeappx.exe"
 $SignTool = Join-Path $SdkDir "signtool.exe"
 Write-Host "Using Windows SDK: $SdkDir" -ForegroundColor Cyan
 
-# 2. Get PFX password from env var or secure prompt (never hardcoded in Git)
 $CertPass = $env:IMAGERESIZEJ_CERT_PASS
 if (-not $CertPass) {
     $sec = Read-Host "Enter PFX certificate password" -AsSecureString
     $CertPass = (New-Object System.Net.NetworkCredential("", $sec)).Password
 }
 
-# 3. Generate required PNG icons for MSIX from assets\icon.ico
 Add-Type -AssemblyName System.Drawing
 $IconPath = Join-Path $Root "assets\icon.ico"
 if (-not (Test-Path $IconPath)) {
@@ -55,10 +50,8 @@ Save-IconPng $IconPath "$AssetsDir\StoreLogo.png" 50
 Save-IconPng $IconPath "$AssetsDir\Square44x44Logo.png" 44
 Save-IconPng $IconPath "$AssetsDir\Square150x150Logo.png" 150
 
-# 4. Create self-signed certificate outside the repository (once)
 $PfxDir = Split-Path -Parent $PfxPath
 New-Item -ItemType Directory -Force $PfxDir | Out-Null
-New-Item -ItemType Directory -Force $CertDir | Out-Null
 if (-not (Test-Path $PfxPath)) {
     Write-Host "Creating self-signed certificate CN=ImageResizerJ at $PfxPath..." -ForegroundColor Cyan
     $cert = New-SelfSignedCertificate `
@@ -72,18 +65,21 @@ if (-not (Test-Path $PfxPath)) {
 
     $secPass = ConvertTo-SecureString -String $CertPass -Force -AsPlainText
     Export-PfxCertificate -Cert $cert -FilePath $PfxPath -Password $secPass | Out-Null
-    Export-Certificate -Cert $cert -FilePath $CerPath | Out-Null
     Remove-Item "Cert:\CurrentUser\My\$($cert.Thumbprint)" -ErrorAction SilentlyContinue
 }
 
-# 5. Copy binaries and public cert into staging folder
 New-Item -ItemType Directory -Force $StageDir | Out-Null
 Copy-Item "$ReleaseDir\imageresizej.exe" $StageDir -Force
 Copy-Item "$ReleaseDir\resizer-worker.exe" $StageDir -Force
 Copy-Item "$ReleaseDir\resizer_win_shell.dll" $StageDir -Force
-Copy-Item $CerPath $StageDir -Force
 
-# 6. Pack and sign Sparse MSIX
+$pfxCert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($PfxPath, $CertPass)
+[System.IO.File]::WriteAllBytes(
+    "$StageDir\ImageResizerJ.cer",
+    $pfxCert.Export([System.Security.Cryptography.X509Certificates.X509ContentType]::Cert)
+)
+$pfxCert.Dispose()
+
 Write-Host "Packing ImageResizerJ.msix..." -ForegroundColor Cyan
 & $MakeAppx pack /o /d $SparseDir /nv /p $MsixPath
 if ($LASTEXITCODE -ne 0) { throw "makeappx.exe failed" }
