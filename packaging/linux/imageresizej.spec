@@ -1,7 +1,7 @@
 %add_debuginfo_skiplist %_bindir/*
 
 Name:           imageresizej
-Version:        0.3.2
+Version:        0.3.3
 Release:        alt1
 Summary:        Fast batch image resizer and converter
 License:        MIT
@@ -42,6 +42,10 @@ update-desktop-database -q /usr/share/applications &>/dev/null || :
 %_datadir/kio/servicemenus/imageresizej.desktop
 
 %changelog
+* Mon Nov 23 2026 Vladimir Piskov <1oblivka@mail.ru> 0.3.3-alt1
+- Add .deb and .tar.xz Linux packaging scripts and CI workflow
+- Add .jfif, .jpe, and .hif context menu associations on Windows
+
 * Sun Nov 22 2026 Vladimir Piskov <1oblivka@mail.ru> 0.3.2-alt1
 - Add dismissible first-run usage hint in settings
 - Fix frameless window minimize/restore on Windows and refine titlebar layout

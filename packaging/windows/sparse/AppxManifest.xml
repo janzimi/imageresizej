@@ -12,7 +12,7 @@
   <Identity
     Name="ImageResizerJ"
     Publisher="CN=ImageResizerJ"
-    Version="0.3.2.0"
+    Version="0.3.3.0"
     ProcessorArchitecture="x64" />
 
   <Properties>
@@ -52,6 +52,12 @@
             <desktop5:ItemType Type=".jpeg">
               <desktop5:Verb Id="ImageResizerJ" Clsid="7D4B3C9E-5A1F-4E82-9B6A-3C8D1F2E4A50" />
             </desktop5:ItemType>
+            <desktop5:ItemType Type=".jpe">
+              <desktop5:Verb Id="ImageResizerJ" Clsid="7D4B3C9E-5A1F-4E82-9B6A-3C8D1F2E4A50" />
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".jfif">
+              <desktop5:Verb Id="ImageResizerJ" Clsid="7D4B3C9E-5A1F-4E82-9B6A-3C8D1F2E4A50" />
+            </desktop5:ItemType>
             <desktop5:ItemType Type=".png">
               <desktop5:Verb Id="ImageResizerJ" Clsid="7D4B3C9E-5A1F-4E82-9B6A-3C8D1F2E4A50" />
             </desktop5:ItemType>
@@ -62,6 +68,9 @@
               <desktop5:Verb Id="ImageResizerJ" Clsid="7D4B3C9E-5A1F-4E82-9B6A-3C8D1F2E4A50" />
             </desktop5:ItemType>
             <desktop5:ItemType Type=".heif">
+              <desktop5:Verb Id="ImageResizerJ" Clsid="7D4B3C9E-5A1F-4E82-9B6A-3C8D1F2E4A50" />
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".hif">
               <desktop5:Verb Id="ImageResizerJ" Clsid="7D4B3C9E-5A1F-4E82-9B6A-3C8D1F2E4A50" />
             </desktop5:ItemType>
             <desktop5:ItemType Type=".avif">

@@ -1,5 +1,5 @@
 #define AppName "ImageResizerJ"
-#define AppVersion "0.3.2"
+#define AppVersion "0.3.3"
 #ifndef StageDir
   #define StageDir "C:\RustTarget\stage"
 #endif
@@ -63,6 +63,14 @@ Root: HKLM; Subkey: "SOFTWARE\Classes\SystemFileAssociations\.jpeg\shell\ImageRe
 Root: HKLM; Subkey: "SOFTWARE\Classes\SystemFileAssociations\.jpeg\shell\ImageResizerJ"; ValueType: string; ValueName: "MultiSelectModel"; ValueData: "Player"; Check: IsWindows10OrOlder
 Root: HKLM; Subkey: "SOFTWARE\Classes\SystemFileAssociations\.jpeg\shell\ImageResizerJ"; ValueType: string; ValueName: "CommandStateSync"; ValueData: ""; Check: IsWindows10OrOlder
 
+Root: HKLM; Subkey: "SOFTWARE\Classes\SystemFileAssociations\.jpe\shell\ImageResizerJ"; ValueType: string; ValueName: "ExplorerCommandHandler"; ValueData: "{{#Clsid}"; Flags: uninsdeletekey; Check: IsWindows10OrOlder
+Root: HKLM; Subkey: "SOFTWARE\Classes\SystemFileAssociations\.jpe\shell\ImageResizerJ"; ValueType: string; ValueName: "MultiSelectModel"; ValueData: "Player"; Check: IsWindows10OrOlder
+Root: HKLM; Subkey: "SOFTWARE\Classes\SystemFileAssociations\.jpe\shell\ImageResizerJ"; ValueType: string; ValueName: "CommandStateSync"; ValueData: ""; Check: IsWindows10OrOlder
+
+Root: HKLM; Subkey: "SOFTWARE\Classes\SystemFileAssociations\.jfif\shell\ImageResizerJ"; ValueType: string; ValueName: "ExplorerCommandHandler"; ValueData: "{{#Clsid}"; Flags: uninsdeletekey; Check: IsWindows10OrOlder
+Root: HKLM; Subkey: "SOFTWARE\Classes\SystemFileAssociations\.jfif\shell\ImageResizerJ"; ValueType: string; ValueName: "MultiSelectModel"; ValueData: "Player"; Check: IsWindows10OrOlder
+Root: HKLM; Subkey: "SOFTWARE\Classes\SystemFileAssociations\.jfif\shell\ImageResizerJ"; ValueType: string; ValueName: "CommandStateSync"; ValueData: ""; Check: IsWindows10OrOlder
+
 Root: HKLM; Subkey: "SOFTWARE\Classes\SystemFileAssociations\.png\shell\ImageResizerJ"; ValueType: string; ValueName: "ExplorerCommandHandler"; ValueData: "{{#Clsid}"; Flags: uninsdeletekey; Check: IsWindows10OrOlder
 Root: HKLM; Subkey: "SOFTWARE\Classes\SystemFileAssociations\.png\shell\ImageResizerJ"; ValueType: string; ValueName: "MultiSelectModel"; ValueData: "Player"; Check: IsWindows10OrOlder
 Root: HKLM; Subkey: "SOFTWARE\Classes\SystemFileAssociations\.png\shell\ImageResizerJ"; ValueType: string; ValueName: "CommandStateSync"; ValueData: ""; Check: IsWindows10OrOlder
@@ -78,6 +86,10 @@ Root: HKLM; Subkey: "SOFTWARE\Classes\SystemFileAssociations\.heic\shell\ImageRe
 Root: HKLM; Subkey: "SOFTWARE\Classes\SystemFileAssociations\.heif\shell\ImageResizerJ"; ValueType: string; ValueName: "ExplorerCommandHandler"; ValueData: "{{#Clsid}"; Flags: uninsdeletekey; Check: IsWindows10OrOlder
 Root: HKLM; Subkey: "SOFTWARE\Classes\SystemFileAssociations\.heif\shell\ImageResizerJ"; ValueType: string; ValueName: "MultiSelectModel"; ValueData: "Player"; Check: IsWindows10OrOlder
 Root: HKLM; Subkey: "SOFTWARE\Classes\SystemFileAssociations\.heif\shell\ImageResizerJ"; ValueType: string; ValueName: "CommandStateSync"; ValueData: ""; Check: IsWindows10OrOlder
+
+Root: HKLM; Subkey: "SOFTWARE\Classes\SystemFileAssociations\.hif\shell\ImageResizerJ"; ValueType: string; ValueName: "ExplorerCommandHandler"; ValueData: "{{#Clsid}"; Flags: uninsdeletekey; Check: IsWindows10OrOlder
+Root: HKLM; Subkey: "SOFTWARE\Classes\SystemFileAssociations\.hif\shell\ImageResizerJ"; ValueType: string; ValueName: "MultiSelectModel"; ValueData: "Player"; Check: IsWindows10OrOlder
+Root: HKLM; Subkey: "SOFTWARE\Classes\SystemFileAssociations\.hif\shell\ImageResizerJ"; ValueType: string; ValueName: "CommandStateSync"; ValueData: ""; Check: IsWindows10OrOlder
 
 Root: HKLM; Subkey: "SOFTWARE\Classes\SystemFileAssociations\.avif\shell\ImageResizerJ"; ValueType: string; ValueName: "ExplorerCommandHandler"; ValueData: "{{#Clsid}"; Flags: uninsdeletekey; Check: IsWindows10OrOlder
 Root: HKLM; Subkey: "SOFTWARE\Classes\SystemFileAssociations\.avif\shell\ImageResizerJ"; ValueType: string; ValueName: "MultiSelectModel"; ValueData: "Player"; Check: IsWindows10OrOlder
